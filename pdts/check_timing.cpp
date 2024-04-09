@@ -102,7 +102,7 @@ int main(int argc, char const *argv[])
     *reinterpret_cast<uint32_t*>(&mon) = cib::util::reg_read((vmem_mon+CH0_OFFSET));
 
 
-    printf("ts : %" PRIu64 "\n", ts.get_timestamp());
+    printf("ts : %" PRIu64 "   stat: %" PRIu32 "\n", ts.get_timestamp(), mon.get_u32());
     printf("stat %X ctl_a %X ctl_d %X cdr_los %X sync %X sync_stb %X rdy %X sfp_tx_fault %X, sfp_los %X \n",
            mon.stat,
            mon.ctrl_a,
