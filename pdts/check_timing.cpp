@@ -2,6 +2,12 @@
 #include <cstdint>
 #include <cinttypes>
 
+#include <mem_utils.h>
+#include <atomic>
+#include <csignal>
+#include <thread>
+#include <chrono>
+
 // not used
 #define GPIO1_MEM_LOW   0x00A0010000
 #define GPIO1_MEM_HIGH  0x00A001FFFF
@@ -17,12 +23,13 @@
 #define CH0_OFFSET  0x0
 #define CH1_OFFSET  0x8
 
+volatile std::atomic<bool> g_stop;
 
-typedef struct ts_t {
+typedef struct pdts_ts_t {
   uint32_t low;
   uint32_t high;
   uint64_t get_timestamp() {return *(reinterpret_cast<uint64_t*>(this));}
-} ts_t;
+} pdts_ts_t;
 
 // struct of GPIO2
 typedef struct pdts_mon_t {
@@ -39,22 +46,81 @@ typedef struct pdts_mon_t {
 
 } pdts_mon_t;
 
-int main(int argc, char const *argv[])
+void test_structures()
 {
-  /* code */
-
-  ts_t t;
+  pdts_ts_t t;
   t.low = 0xFFFF;
   t.high= static_cast<uint32_t>(0xAAAAAAAAAA);
-
   printf("timestamp : 0x%" PRIX64 "\n",t.get_timestamp());
   pdts_mon_t mon;
   *reinterpret_cast<uint32_t*>(&mon) = static_cast<uint32_t>(0xAAAAAAAAAA);
   printf("Size %lu value : 0x%" PRIX32 "\n",sizeof(mon),mon.get_u32());
 
+}
 
-  // first map the memory
-  // we do need that
+
+void sig_handler(int sig)
+{
+  printf("* Received signal %i *\n",sig);
+  g_stop.store(true);
+}
+
+int main(int argc, char const *argv[])
+{
+  g_stop.store(false);
+
+  printf("> Registering an interrupt signal\n");
+  std::signal(SIGTERM,sig_handler);
+  printf("> Initializing memory structures\n");
+
+  int memfd = 0;
+  printf(">> Mapping timestamp region\n");
+  uintptr_t vmem_ts = cib::util::map_phys_mem(memfd,GPIO3_MEM_LOW,GPIO3_MEM_HIGH);
+  printf(">>> Got 0x%" PRIXPTR "\n",vmem_ts);
+  if (vmem_ts == 0x0)
+  {
+    return 255;
+  }
+  printf(">> Mapping debug registers\n");
+  uintptr_t vmem_mon = cib::util::map_phys_mem(memfd,GPIO2_MEM_LOW,GPIO2_MEM_HIGH);
+  printf(">>> Got 0x%" PRIXPTR "\n",vmem_mon);
+  if (vmem_mon == 0x0)
+  {
+    cib::util::unmap_mem(cib::util::cast_to_void(vmem_ts),(GPIO3_MEM_HIGH-GPIO3_MEM_LOW));
+    return 255;
+  }
+
+  //
+  pdts_ts_t ts;
+  pdts_mon_t mon;
+  while (!g_stop.load())
+  {
+    ts.low = cib::util::reg_read((vmem_ts+CH0_OFFSET));
+    ts.high = cib::util::reg_read((vmem_ts+CH1_OFFSET));
+
+    // now grab the monitor and dump it
+    *reinterpret_cast<uint32_t*>(&mon) = cib::util::reg_read((vmem_mon+CH0_OFFSET));
+
+
+    printf("ts : %" PRIu64 "\n", ts.get_timestamp());
+    printf("stat %X ctl_a %X ctl_d %X cdr_los %X sync %X sync_stb %X rdy %X sfp_tx_fault %X, sfp_los %X \n",
+           mon.stat,
+           mon.ctrl_a,
+           mon.ctrl_d,
+           mon.cdr_los,
+           mon.sync,
+           mon.sync_stb,
+           mon.rdy,
+           mon.sfp_tx_fault,
+           mon.sfp_los);
+
+   std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+
+  // cancelation called
+  // unamp memory
+  cib::util::unmap_mem(cib::util::cast_to_void(vmem_ts),(GPIO3_MEM_HIGH-GPIO3_MEM_LOW));
+  cib::util::unmap_mem(cib::util::cast_to_void(vmem_mon),(GPIO2_MEM_HIGH-GPIO2_MEM_LOW));
 
   return 0;
 }

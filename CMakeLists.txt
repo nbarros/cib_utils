@@ -6,8 +6,18 @@ project (cib_tools
 	DESCRIPTION "A Hello World Project")
 
 
+include_directories(BEFORE ${PROJECT_SOURCE_DIR}/common/)
+
+file(GLOB COMMON_SRC_FILES ${PROJECT_SOURCE_DIR}/common/*.cpp)
+add_library(common SHARED ${COMMON_SRC_FILES})
+target_compile_features(common PUBLIC cxx_std_11)
+set_target_properties(common PROPERTIES CXX_STANDARD_REQUIRED ON)
+set_target_properties(common PROPERTIES CXX_EXTENSIONS OFF)
+
 add_subdirectory(versaclock)
 add_subdirectory(pdts)
+
+
 
 
 # This project will output an executable file
