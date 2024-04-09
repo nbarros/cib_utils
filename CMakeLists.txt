@@ -7,6 +7,8 @@ project (cib_tools
 
 
 add_subdirectory(versaclock)
+add_subdirectory(pdts)
+
 
 # This project will output an executable file
 #add_executable(${PROJECT_NAME} cib_tools.cpp)
