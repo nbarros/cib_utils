@@ -17,7 +17,7 @@ set_target_properties(common PROPERTIES CXX_EXTENSIONS OFF)
 add_subdirectory(versaclock)
 add_subdirectory(pdts)
 
-
+add_subdirectory(dac)
 
 
 # This project will output an executable file
