@@ -90,11 +90,11 @@ int main(int argc, char **argv)
         perror("ioctl");
         return -1;
     }
-    rc = ioctl(writeFifoFd, AXIS_FIFO_RESET_IP);
-    if (rc) {
-        perror("ioctl");
-        return -1;
-    }
+//    rc = ioctl(writeFifoFd, AXIS_FIFO_RESET_IP);
+//    if (rc) {
+//        perror("ioctl");
+//        return -1;
+//    }
 
     /*****************/
     /* start threads */
