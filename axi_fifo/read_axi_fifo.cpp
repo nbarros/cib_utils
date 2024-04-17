@@ -85,6 +85,7 @@ int main(int argc, char **argv)
     /*****************************/
     /* initialize the fifo core  */
     /*****************************/
+    printf("Reset\n");
     rc = ioctl(readFifoFd, AXIS_FIFO_RESET_IP);
     if (rc) {
         perror("ioctl");
@@ -105,6 +106,8 @@ int main(int argc, char **argv)
 //            (void *)NULL);
 
     /* start thread listening for fifo receive packets */
+    printf("Thread\n");
+
     rc = pthread_create(&read_from_fifo_thread, NULL, read_from_fifo_thread_fn,
             (void *)NULL);
 
@@ -178,6 +181,8 @@ static void *read_from_fifo_thread_fn(void *data)
 
     packets_rx = 0;
 
+    printf("Looping\n");
+
     while (running)
     {
         bytesFifo = read(readFifoFd, buf, MAX_BUF_SIZE_BYTES);
@@ -190,6 +195,8 @@ static void *read_from_fifo_thread_fn(void *data)
             packets_rx++;
         }
     }
+    printf("Out of loop\n");
+
 
     return (void *)0;
 }
