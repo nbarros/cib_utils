@@ -18,6 +18,7 @@ add_subdirectory(versaclock)
 add_subdirectory(pdts)
 
 add_subdirectory(dac)
+add_subdirectory(axi_fifo)
 
 
 # This project will output an executable file
