@@ -19,6 +19,7 @@ add_subdirectory(pdts)
 
 add_subdirectory(dac)
 add_subdirectory(axi_fifo)
+add_subdirectory(i2c_misc)
 
 
 # This project will output an executable file
