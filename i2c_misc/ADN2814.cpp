@@ -13,15 +13,15 @@ namespace cib
   {
 
     ADN2814::ADN2814 ()
-    {
+        {
 
-    }
+        }
 
     ADN2814::~ADN2814 ()
     {
     }
 
-    const uint32_t ADN2814::get_frequency()
+    int ADN2814::get_frequency(uint32_t &rate)
     {
       if (!m_is_open)
       {
@@ -33,19 +33,19 @@ namespace cib
 
       uint32_t freq;
       uint8_t tmp;
-      // FIXME: Verify whether the total frequency is meant to be FREQ2 | FREQ1 | FRE0
+      rate = 0x0;
       int ret = read_register(0x2,tmp);
       if (ret != CIB_I2C_OK)
       {
         printf("Error reading register\n");
-        return 0x0;
+        return ret;
       }
       freq = tmp;
       ret = read_register(0x1,tmp);
       if (ret != CIB_I2C_OK)
       {
         printf("Error reading register\n");
-        return 0x0;
+        return ret;
       }
       // shift the existing value
       freq |= (freq << 8) | tmp;
@@ -53,15 +53,15 @@ namespace cib
       if (ret != CIB_I2C_OK)
       {
         printf("Error reading register\n");
-        return 0x0;
+        return ret;
       }
       // shift the existing value and append the new
       freq = (freq << 8) | tmp;
-
-      return freq;
+      rate = freq;
+      return ret;
     }
 
-    const uint16_t ADN2814::get_data_rate()
+    int ADN2814::get_data_rate(uint16_t &rate)
     {
       if (!m_is_open)
       {
@@ -76,42 +76,42 @@ namespace cib
         // failed to check LOL
         // can't measure. print error and return
         printf("Failed to measure register status. Returned %X\n",ret);
-        return 0x0;
+        return ret;
       }
 
       if (reg.lol_status)
       {
         printf("CDR chip in LOL state.\n");
-        return 0x0;
+        return CIB_I2C_ErrorDeviceInvalidState;
       }
 
       // we're good to make the measurement
       // this is the only measurement we can do since we do not have a reference
       // clock
 
-      uint16_t rate = 0x0;
+      rate = 0x0;
 
       uint8_t tmp;
       ret = read_register(0x3,tmp);
       if (ret != CIB_I2C_OK)
       {
         printf("Error reading register\n");
-        return 0x0;
+        return ret;
       }
       rate = tmp;
       ret = read_register(0x4,tmp);
       if (ret != CIB_I2C_OK)
       {
         printf("Error reading register\n");
-        return 0x0;
+        return ret;
       }
       // shift the existing value
       rate |= (rate << 1) | tmp;
 
-      return rate;
+      return ret;
     }
 
-    const uint32_t ADN2814::get_los_status()
+    int ADN2814::get_los_status(uint16_t &status)
     {
       if (!m_is_open)
       {
@@ -119,9 +119,10 @@ namespace cib
       }
       static adn2814_misc_reg reg;
       int ret = read_register(0x4,*reinterpret_cast<uint8_t*>(&reg));
-      return static_cast<const uint32_t>(reg.los_status);
+      status = static_cast<uint16_t>(reg.los_status);
+      return ret;
     }
-    const uint32_t ADN2814::get_lol_status()
+    int ADN2814::get_lol_status(uint16_t &status)
     {
       if (!m_is_open)
       {
@@ -129,10 +130,11 @@ namespace cib
       }
       static adn2814_misc_reg reg;
       int ret = read_register(0x4,*reinterpret_cast<uint8_t*>(&reg));
-      return static_cast<const uint32_t>(reg.lol_status);
+      status = static_cast<uint16_t>(reg.lol_status);
+      return ret;
     }
 
-    const uint32_t ADN2814::get_static_lol()
+    int ADN2814::get_static_lol(uint16_t &value)
     {
       if (!m_is_open)
       {
@@ -140,9 +142,10 @@ namespace cib
       }
       static adn2814_misc_reg reg;
       int ret = read_register(0x4,*reinterpret_cast<uint8_t*>(&reg));
-      return static_cast<const uint32_t>(reg.lol_static);
+      value =  static_cast<uint16_t>(reg.lol_static);
+      return ret;
     }
-    const uint32_t ADN2814::get_drate_meas_complete()
+    int ADN2814::get_drate_meas_complete(uint16_t &value)
     {
       if (!m_is_open)
       {
@@ -151,7 +154,8 @@ namespace cib
       // does not make sense since we do not have a reference clock
       static adn2814_misc_reg reg;
       int ret = read_register(0x4,*reinterpret_cast<uint8_t*>(&reg));
-      return static_cast<const uint32_t>(reg.dr_meas_done);
+      value =  static_cast<uint16_t>(reg.dr_meas_done);
+      return ret;
     }
     // now the writting calls
     void ADN2814::reset()

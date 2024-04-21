@@ -33,7 +33,9 @@ namespace cib
 #define CIB_I2C_ErrorReadRegister 0x20
 #define CIB_I2C_ErrorWriteRegister 0x40
 #define CIB_I2C_ErrorNotImplemented 0x80
+#define CIB_I2C_ErrorDeviceInvalidState 0x100
 
+    extern  const char* strerror(int err);
 
     typedef struct i2c_write_message
     {

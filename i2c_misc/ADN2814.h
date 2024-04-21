@@ -75,7 +75,7 @@ namespace cib
      * 0x3[R] :
      *
      */
-    class ADN2814 final : Device
+    class ADN2814 final : public Device
     {
     public:
       ADN2814 ();
@@ -85,16 +85,16 @@ namespace cib
       ADN2814& operator= (const ADN2814 &other) = delete;
       ADN2814& operator= (ADN2814 &&other) = delete;
 
-      const uint32_t get_frequency();
-      const uint16_t get_data_rate();
-      const uint32_t get_los_status();
-      const uint32_t get_lol_status();
+      int get_frequency(uint32_t &rate);
+      int get_data_rate(uint16_t &rate);
+      int get_los_status(uint16_t &status);
+      int get_lol_status(uint16_t &status);
 
 
       // other getters with more specific usage
-      // get LOS statis
-      const uint32_t get_static_lol();
-      const uint32_t get_drate_meas_complete();
+      //
+      int get_static_lol(uint16_t &value);
+      int get_drate_meas_complete(uint16_t & value);
 
 
 

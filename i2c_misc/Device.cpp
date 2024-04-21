@@ -20,6 +20,42 @@ namespace cib
   namespace i2c
   {
 
+    const char* strerror(int err)
+    {
+      static std::string msg;
+      switch(err)
+      {
+        case CIB_I2C_OK:
+          msg = "Command successful!";
+          break;
+        case CIB_I2C_ERROR:
+          msg = "Error";
+          break;
+        case CIB_I2C_DeviceInUse:
+          msg = "Device already in use.";
+          break;
+        case CIB_I2C_ErrorOpenDevice:
+          msg = "Error opening device."; break;
+        case CIB_I2C_ErrorDeviceConfig:
+          msg = "Error configuring device."; break;
+        case CIB_I2C_ErrorDeviceNotOpen:
+          msg = "Device not open yet."; break;
+        case CIB_I2C_ErrorReadRegister:
+          msg = "Error reading register"; break;
+        case CIB_I2C_ErrorWriteRegister:
+          msg = "Error writing to register"; break;
+        case CIB_I2C_ErrorNotImplemented:
+          msg = "Functionality not implemented"; break;
+        case CIB_I2C_ErrorDeviceInvalidState:
+          msg = "Device is in invalid state"; break;
+        default:
+          msg = "Unknown error code";
+          break;
+      }
+      return msg.c_str();
+    }
+
+
     Device::Device ()
     : m_is_open(false)
       ,m_device("")
@@ -79,6 +115,7 @@ namespace cib
       m_fd = open(m_device.c_str(),O_RDWR);
       if (m_fd < 0)
       {
+        printf("Failed to open device: %d : %s\n",errno,std::strerror(errno));
         return CIB_I2C_ErrorOpenDevice;
       }
       // find the specified device
