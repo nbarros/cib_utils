@@ -165,10 +165,10 @@ int main( int argc, char**argv)
   {
     switch (c)
       {
-      case 'a':
+      case 'b':
         bus = atoi(optarg);
         break;
-      case 'b':
+      case 'd':
         dev = atoi(optarg);
         break;
       case 'h':
