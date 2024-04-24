@@ -9,6 +9,7 @@
 
 #include <cerrno>
 #include <cstring>
+#include <cstring>
 
 extern "C"
 {
@@ -92,7 +93,9 @@ namespace cib
       {
         return CIB_I2C_DeviceInUse;
       }
-      m_device = "dev/i2c-" + bus;
+      printf("Received bus %d\n",bus);
+      m_device = "/dev/i2c-" + std::to_string (bus);
+      printf("Device::set_bus : bus set to [%s]\n",m_device.c_str());
       m_bus_num = bus;
       return CIB_I2C_OK;
     }
@@ -117,10 +120,11 @@ namespace cib
         return CIB_I2C_OK;
       }
       // open the device
+      printf("Opening device [%s]\n",m_device.c_str());
       m_fd = open(m_device.c_str(),O_RDWR);
       if (m_fd < 0)
       {
-        printf("Failed to open device: %d : %s\n",errno,std::strerror(errno));
+        printf("Device::open_device : Failed to open device bus: %d : %s\n",errno,std::strerror(errno));
         return CIB_I2C_ErrorOpenDevice;
       }
       int ret = select_device();
@@ -132,6 +136,9 @@ namespace cib
         // find the specified device
       if (ioctl ( m_fd , I2C_SLAVE, m_dev_addr ) < 0 )
       {
+        printf("Device::open_device :Failed to open device at address: %d : %s\n",errno,std::strerror(errno));
+        close_device();
+        return CIB_I2C_ErrorOpenDevice;
       }
       m_is_open = true;
       // populate the functionality array
@@ -195,12 +202,20 @@ namespace cib
       {
         printf ( "error: i2c write returned %i instead of 1\n" , wr_bytes ) ;
       }
-      int rd_bytes = read ( m_fd, &addr, 1 ) ;
-      if ( rd_bytes != 1 )
+      uint8_t buf[3];
+      //int rd_bytes = read ( m_fd, buf, 1 ) ;
+      int rd_bytes = i2c_smbus_read_byte_data(m_fd,addr);
+      if ( rd_bytes == -1 )
       {
-        printf ( "error: i2c read returned %i instead of 1\n" , rd_bytes ) ;
+        printf ( "--> error: i2c read returned %i instead of 1\n" , rd_bytes ) ;
       }
-      data = addr;
+      else
+      {
+	printf("Interim result : %d\n",rd_bytes);
+      }
+
+      data = rd_bytes & 0xFF;
+      printf("Returning data 0x%X\n",data);
       return CIB_I2C_OK;
 
     }

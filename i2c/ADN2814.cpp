@@ -106,8 +106,8 @@ namespace cib
         return ret;
       }
       // shift the existing value
-      rate |= (rate << 1) | tmp;
-
+      rate = (rate << 1) | (tmp & 0x1);
+      printf("Rate output : %hu\n",rate);
       return ret;
     }
 
