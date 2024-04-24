@@ -165,10 +165,10 @@ int main( int argc, char**argv)
   {
     switch (c)
       {
-      case 'a':
+      case 'b':
         bus = atoi(optarg);
         break;
-      case 'b':
+      case 'd':
         dev = atoi(optarg);
         break;
       case 'h':
@@ -191,16 +191,18 @@ int main( int argc, char**argv)
   {
     return 1;
   }
+  printf("Bus set\n");
   if (check_result(dac.set_dev_number(dev)))
   {
     return 1;
   }
+  printf("address set\n");
 
   if (check_result(dac.open_device()))
   {
     return 1;
   }
-
+  printf("Dev openedset\n");
   if (optind < argc)
   {
     return run_command(dac,argc-optind,argv+optind);
