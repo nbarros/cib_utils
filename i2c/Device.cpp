@@ -127,20 +127,13 @@ namespace cib
         printf("Device::open_device : Failed to open device bus: %d : %s\n",errno,std::strerror(errno));
         return CIB_I2C_ErrorOpenDevice;
       }
+      m_is_open = true;
       int ret = select_device();
       if (ret != CIB_I2C_OK)
       {
         close_device();
         return ret;
       }
-        // find the specified device
-      if (ioctl ( m_fd , I2C_SLAVE, m_dev_addr ) < 0 )
-      {
-        printf("Device::open_device :Failed to open device at address: %d : %s\n",errno,std::strerror(errno));
-        close_device();
-        return CIB_I2C_ErrorOpenDevice;
-      }
-      m_is_open = true;
       // populate the functionality array
       if (ioctl(m_fd, I2C_FUNCS, &m_dev_funcs) < 0)
       {
