@@ -5,7 +5,7 @@
  *      Author: Nuno Barros
  */
 
-#include "../i2c/Device.h"
+#include <Device.h>
 
 #include <cerrno>
 #include <cstring>
@@ -15,6 +15,10 @@ extern "C"
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <linux/i2c-dev.h>
+#include <linux/i2c.h>
+#include <i2c/smbus.h>
+
 }
 namespace cib
 {
@@ -63,7 +67,7 @@ namespace cib
       ,m_fd(-1)
       ,m_bus_num(-1)
       ,m_dev_addr(-1)
-      ,m_dev_funcs(nullptr)
+      ,m_dev_funcs(0)
     {
 
     }
@@ -119,22 +123,25 @@ namespace cib
         printf("Failed to open device: %d : %s\n",errno,std::strerror(errno));
         return CIB_I2C_ErrorOpenDevice;
       }
-      // find the specified device
+      int ret = select_device();
+      if (ret != CIB_I2C_OK)
+      {
+        close_device();
+        return ret;
+      }
+        // find the specified device
       if (ioctl ( m_fd , I2C_SLAVE, m_dev_addr ) < 0 )
       {
-        printf("Failed to open device: %d : %s\n",errno,std::strerror(errno));
-        close_device();
-        return CIB_I2C_ErrorOpenDevice;
       }
       m_is_open = true;
       // populate the functionality array
-      if (ioctl(m_fd, I2C_FUNCS, m_dev_funcs) < 0)
+      if (ioctl(m_fd, I2C_FUNCS, &m_dev_funcs) < 0)
       {
-        printf("Failed to query device for functionality: %d : %s\n",errno,std::strerror(errno));
+        printf("WARN: Failed to query device for functionality: %d : %s\n",errno,std::strerror(errno));
       }
       else
       {
-        printf("Functionlity of the device: [%lX]\n",*m_dev_funcs);
+        printf("Functionlity of the device: [%" PRIx64 "]\n",m_dev_funcs);
       }
 
       return CIB_I2C_OK;
@@ -145,7 +152,7 @@ namespace cib
       {
         if (close(m_fd) < 0)
         {
-          printf("Failed to close file descriptor: %d : %s\n",errno,std::strerror(errno));
+          printf("WARN: Failed to close file descriptor: %d : %s\n",errno,std::strerror(errno));
         }
         m_is_open = false;
       }
@@ -201,6 +208,184 @@ namespace cib
     int  Device::dump_device_memory()
     {
       return CIB_I2C_ErrorNotImplemented;
+    }
+
+    // -- smbus interface. Use this unless you need something specific
+    int  Device::write_byte_register_smbus(const uint8_t addr, const uint8_t data, const uint8_t mask)
+    {
+      if (!m_is_open)
+      {
+        return CIB_I2C_ErrorDeviceNotOpen;
+      }
+      int ret = select_device();
+      if (ret != CIB_I2C_OK)
+      {
+        return ret;
+      }
+      uint8_t msg = data;
+      uint8_t cache;
+      if (mask != 0xFFFF)
+      {
+        if (read_byte_register_smbus(addr,cache))
+        {
+          return CIB_I2C_ErrorReadRegister;
+        }
+        // calculate the masked contents
+        msg = ((cache & ~mask) | (data & mask));
+      }
+      // and now just write the thing
+      // zero means success
+      ret = i2c_smbus_write_byte_data(m_fd,addr,msg);
+      if (ret)
+      {
+        printf("Failed to write message: %d : %s\n",errno,std::strerror(errno));
+        return CIB_I2C_ErrorWriteRegister;
+      }
+      return CIB_I2C_OK;
+    }
+
+    int  Device::write_word_register_smbus(const uint8_t addr, const uint16_t data, const uint16_t mask)
+    {
+      if (!m_is_open)
+      {
+        return CIB_I2C_ErrorDeviceNotOpen;
+      }
+      int ret = select_device();
+      if (ret != CIB_I2C_OK)
+      {
+        return ret;
+      }
+      uint16_t msg = data;
+      uint16_t cache;
+      if (mask != 0xFFFF)
+      {
+        if (read_word_register_smbus(addr,cache))
+        {
+          return CIB_I2C_ErrorReadRegister;
+        }
+        // calculate the masked contents
+        msg = ((cache & ~mask) | (data & mask));
+      }
+      // and now just write the thing
+      // zero means success
+      ret = i2c_smbus_write_word_data(m_fd,addr,msg);
+      if (ret)
+      {
+        printf("Failed to write message: %d : %s\n",errno,std::strerror(errno));
+        return CIB_I2C_ErrorWriteRegister;
+      }
+      return CIB_I2C_OK;
+    }
+
+    int  Device::write_block_register_smbus(const uint8_t addr, const uint8_t len, const uint8_t *data)
+    {
+      if (!m_is_open)
+      {
+        return CIB_I2C_ErrorDeviceNotOpen;
+      }
+      int ret = select_device();
+      if (ret != CIB_I2C_OK)
+      {
+        return ret;
+      }
+      // verify that the size is withing limits allowed by smbus
+      if  (len > 32)
+      {
+        return CIB_I2C_ErrorBlockSize;
+      }
+      // and now just write the thing
+      // zero means success
+      ret = i2c_smbus_write_block_data(m_fd,addr,len,data);
+      if (ret < 0)
+      {
+        printf("Failed to write message: %d : %s\n",errno,std::strerror(errno));
+        return CIB_I2C_ErrorWriteRegister;
+      }
+      return CIB_I2C_OK;
+    }
+
+    int  Device::read_byte_register_smbus(const uint8_t addr, uint8_t &data)
+    {
+      if (!m_is_open)
+      {
+        return CIB_I2C_ErrorDeviceNotOpen;
+      }
+      int ret = select_device();
+      if (ret != CIB_I2C_OK)
+      {
+        return ret;
+      }
+      ret = i2c_smbus_read_byte_data(m_fd,addr);
+      if (ret < 0)
+      {
+        printf("Failed to read message: %d : %s\n",errno,std::strerror(errno));
+        return CIB_I2C_ErrorReadRegister;
+      }
+      data  = ret & 0xFF;
+      return CIB_I2C_OK;
+    }
+
+    int  Device::read_word_register_smbus(const uint8_t addr, uint16_t &data)
+    {
+      if (!m_is_open)
+      {
+        return CIB_I2C_ErrorDeviceNotOpen;
+      }
+      int ret = select_device();
+      if (ret != CIB_I2C_OK)
+      {
+        return ret;
+      }
+      ret = i2c_smbus_read_word_data(m_fd,addr);
+      if (ret < 0)
+      {
+        printf("Failed to read message: %d : %s\n",errno,std::strerror(errno));
+        return CIB_I2C_ErrorReadRegister;
+      }
+      data  = ret & 0xFFFF;
+      return CIB_I2C_OK;
+    }
+    int  Device::read_block_register_smbus(const uint8_t addr, uint8_t &len, uint8_t *&data)
+    {
+      if (!m_is_open)
+      {
+        return CIB_I2C_ErrorDeviceNotOpen;
+      }
+      int ret = select_device();
+      if (ret != CIB_I2C_OK)
+      {
+        return ret;
+      }
+      if (!(m_dev_funcs & I2C_FUNC_SMBUS_READ_BLOCK_DATA))
+      {
+        return CIB_I2C_ErrorFuncNotSupported;
+      }
+      ret = i2c_smbus_read_block_data(m_fd,addr,data);
+      if (ret < 0)
+      {
+        printf("Failed to read message: %d : %s\n",errno,std::strerror(errno));
+        return CIB_I2C_ErrorReadRegister;
+      }
+      len = ret & 0xFFFF;
+      return CIB_I2C_OK;
+    }
+
+
+    // -- end of SMBUS interface
+
+    int Device::select_device()
+    {
+      if (!m_is_open)
+      {
+        return CIB_I2C_ErrorDeviceNotOpen;
+      }
+      if (ioctl ( m_fd , I2C_SLAVE, m_dev_addr ) < 0 )
+      {
+        printf("Failed to select device [%d,0x%x]: %d : %s\n",m_bus_num,m_dev_addr,errno,std::strerror(errno));
+        close_device();
+        return CIB_I2C_ErrorSelectDevice;
+      }
+      return CIB_I2C_OK;
     }
 
     const char*  Device::byte_to_binary(uint8_t x)

@@ -34,6 +34,10 @@ namespace cib
 #define CIB_I2C_ErrorWriteRegister 0x40
 #define CIB_I2C_ErrorNotImplemented 0x80
 #define CIB_I2C_ErrorDeviceInvalidState 0x100
+#define CIB_I2C_ErrorSelectDevice 0x200
+#define CIB_I2C_ErrorBlockSize 0x400
+#define CIB_I2C_ErrorFuncNotSupported 0x800
+#define CIB_I2C_ErrorInvalidArgument 0x1000
 
     extern  const char* strerror(int err);
 
@@ -66,11 +70,23 @@ namespace cib
       int write_register(uint8_t addr, uint8_t data, uint8_t mask = 0xFF);
       int read_register(uint8_t addr, uint8_t &data);
 
+      // this uses a slightly different set of methods with the smbus interface
+      // old CTB DAC style interface
+      // this uses the SMBUS protocol
+      // for most part it is recommended since it is more stable
+      int write_byte_register_smbus(const uint8_t addr, const uint8_t data, const uint8_t mask = 0xFF);
+      int write_word_register_smbus(const uint8_t addr, const uint16_t data, const uint16_t mask = 0xFFFF);
+      int write_block_register_smbus(const uint8_t addr, const uint8_t len, const uint8_t *data);
+      int read_byte_register_smbus(const uint8_t addr, uint8_t &data);
+      int read_word_register_smbus(const uint8_t addr, uint16_t &data);
+      int read_block_register_smbus(const uint8_t addr, uint8_t &len, uint8_t *&data);
+
       int dump_device_memory();
 
     protected:
       // protetected functions.Still avilable on derived objects
       const char* byte_to_binary(uint8_t x);
+      int select_device();
 
     protected:
       bool m_is_open;
@@ -78,7 +94,7 @@ namespace cib
       int m_fd;
       int m_bus_num;
       int m_dev_addr;
-      unsigned long * m_dev_funcs;
+      uint64_t m_dev_funcs;
     };
 
   } /* namespace i2c */
