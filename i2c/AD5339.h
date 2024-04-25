@@ -46,7 +46,7 @@ namespace cib
       uint8_t pd1       : 1;
       dac_msg_t() {*reinterpret_cast<uint16_t*>(this) = 0x0;};
       uint16_t get_level() {return (*reinterpret_cast<uint16_t*>(this) & 0xFFF);}
-      void set_level(const uint16_t v) {level_lsb = (v & 0xFF); level_msb = ((v>>4) & 0xF);}
+      void set_level(const uint16_t v) {level_lsb = (v & 0xFF); level_msb = ((v>>8) & 0xF);}
       uint16_t get_u16() {return *reinterpret_cast<uint16_t*>(this);}
     } dac_msg_t;
 
