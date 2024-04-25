@@ -61,8 +61,8 @@ namespace cib
       }
       printf("Received word %hu\n",word);
       dac_msg_t msg = *reinterpret_cast<dac_msg_t*>(&word);
-      printf("Recasted word %hu\n",msg.get_u16());
-      printf("DAQ value : %hu\n",msg.get_level());
+      printf("Recasted word %hu [%X]\n",msg.get_u16(),msg.get_u16());
+      printf("DAQ value : %hu [%X]\n",msg.get_level(),msg.get_level());
       value = msg.get_level();
 
       return CIB_I2C_OK;
@@ -101,6 +101,7 @@ namespace cib
       dac_msg_t msg;
       msg.clr_bar = 1;
       msg.set_level(value);
+      printf("About to write %x %x\n",ptr.get_u8(),msg.get_u16());
       ret = write_word_register_smbus(ptr.get_u8(),msg.get_u16());
       if (ret != CIB_I2C_OK)
       {
