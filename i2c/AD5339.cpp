@@ -51,7 +51,7 @@ namespace cib
           printf("Unknown channel %d\n",static_cast<int>(ch));
           return CIB_I2C_ErrorInvalidArgument;
       }
-      uint16_t word;
+      uint16_t word = 0x0;
       ret = read_word_register_smbus(ptr.get_u8(),word);
       if (ret != CIB_I2C_OK)
       {
@@ -59,7 +59,7 @@ namespace cib
         value = 0x0;
         return ret;
       }
-      printf("Received word %hu\n",word);
+      printf("Received word %hu [0x%X]\n",word,word);
       dac_msg_t msg = *reinterpret_cast<dac_msg_t*>(&word);
       printf("Recasted word %hu [%X]\n",msg.get_u16(),msg.get_u16());
       printf("DAQ value : %hu [%X]\n",msg.get_level(),msg.get_level());
@@ -101,7 +101,7 @@ namespace cib
       dac_msg_t msg;
       msg.clr_bar = 1;
       msg.set_level(value);
-      printf("About to write %x %x\n",ptr.get_u8(),msg.get_u16());
+      printf("About to write 0x%X 0x%X (crosscheck : 0x%X 0x%X)\n",ptr.get_u8(),msg.get_u16(),static_cast<int>(ch),value);
       ret = write_word_register_smbus(ptr.get_u8(),msg.get_u16());
       if (ret != CIB_I2C_OK)
       {
