@@ -17,11 +17,11 @@ namespace cib
 
     // pointer byte. It is zero for most stuff
     typedef struct dac_ptr_t
-    {
-      uint8_t padding : 2;
-      uint8_t zeros   : 4;
-      uint8_t dac_b   : 1;
+    { // lsb
       uint8_t dac_a   : 1;
+      uint8_t dac_b   : 1;
+      uint8_t zeros   : 4;
+      uint8_t padding : 2;
       dac_ptr_t() {*reinterpret_cast<uint8_t*>(this) = 0x0;};
       uint8_t get_u8() {return *reinterpret_cast<uint8_t*>(this);}
     } dac_ptr_t;
