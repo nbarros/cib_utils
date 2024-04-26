@@ -6,8 +6,6 @@
  */
 
 #include <AD5339.h>
-#include <spdlog/spdlog.h>
-#include <spdlog/cfg/env.h>
 
 namespace cib
 {
@@ -28,11 +26,12 @@ namespace cib
       {
         return CIB_I2C_ErrorDeviceNotOpen;
       }
-      int ret = select_device();
-      if (ret != CIB_I2C_OK)
-      {
-        return ret;
-      }
+      // doesn't this cause trouble?
+      //      int ret = select_device();
+      //      if (ret != CIB_I2C_OK)
+      //      {
+      //        return ret;
+      //      }
       // remember that this actually words in two steps
       // first a pointer word and then a data word
       dac_ptr_t ptr;
@@ -49,21 +48,22 @@ namespace cib
           ptr.dac_b = 1;
           break;
         default:
-          spdlog::info("Unknown channel {}\n",static_cast<int>(ch));
+          SPDLOG_LOGGER_ERROR(m_log,"Unknown channel {}",static_cast<int>(ch));
           return CIB_I2C_ErrorInvalidArgument;
       }
       uint16_t word = 0x0;
-      ret = read_word_register_smbus(ptr.get_u8(),word);
+      SPDLOG_LOGGER_DEBUG(m_log,"Getting level with [{0:x}]",ptr.get_u8());
+      int ret = read_word_register_smbus(ptr.get_u8(),word);
       if (ret != CIB_I2C_OK)
       {
         // something failed
         value = 0x0;
         return ret;
       }
-      printf("Received word %hu [0x%X]\n",word,word);
+      SPDLOG_LOGGER_TRACE(m_log,"Received word {0} [0x{0:x}]\n",word,word);
       dac_msg_t msg = *reinterpret_cast<dac_msg_t*>(&word);
-      printf("Recasted word %hu [%X]\n",msg.get_u16(),msg.get_u16());
-      printf("DAQ value : %hu [%X]\n",msg.get_level(),msg.get_level());
+      SPDLOG_LOGGER_TRACE(m_log,"Recasted word {0} [0x{0:x}]\n",msg.get_u16(),msg.get_u16());
+      SPDLOG_LOGGER_DEBUG(m_log,"DAC value : {0} [0x{0:x}]\n",msg.get_level(),msg.get_level());
       value = msg.get_level();
 
       return CIB_I2C_OK;

@@ -20,7 +20,6 @@ extern "C"
 #include <linux/i2c.h>
 #include <i2c/smbus.h>
 }
-#include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 namespace cib
@@ -370,13 +369,16 @@ namespace cib
       {
         return ret;
       }
+      SPDLOG_LOGGER_DEBUG(m_log,"Calling read word with [{0} : 0x{1:x}]",m_fd,addr);
       ret = i2c_smbus_read_word_data(m_fd,addr);
       if (ret < 0)
       {
         SPDLOG_LOGGER_ERROR(m_log,"Failed to read message [{0} : {1}]",errno,std::strerror(errno));
         return CIB_I2C_ErrorReadRegister;
       }
+      SPDLOG_LOGGER_DEBUG(m_log,"Received output [{0} : 0x{0:x}]",ret);
       data  = ret & 0xFFFF;
+      SPDLOG_LOGGER_DEBUG(m_log,"Recasted output [{0} : 0x{0:x}]",data);
       return CIB_I2C_OK;
     }
     int  Device::read_block_register_smbus(const uint8_t addr, uint8_t &len, uint8_t *&data)
@@ -413,6 +415,7 @@ namespace cib
       {
         return CIB_I2C_ErrorDeviceNotOpen;
       }
+      SPDLOG_LOGGER_TRACE(m_log,"Selecting device at address [{0} : {1} 0x{1:x}]",m_fd,m_dev_addr);
       if (ioctl ( m_fd , I2C_SLAVE, m_dev_addr ) < 0 )
       {
         SPDLOG_LOGGER_ERROR(m_log,"Failed to select device [{0} : 0x{1:x}] : {2} : {3}",m_bus_num,m_dev_addr,errno,std::strerror(errno));
