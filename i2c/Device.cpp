@@ -131,6 +131,8 @@ namespace cib
     }
     int  Device::open_device()
     {
+      int ret;
+
       if ((m_bus_num < 0) || (m_dev_addr < 0))
       {
         SPDLOG_LOGGER_TRACE(m_log,"Device not ready to open [bus {0}, dev 0x{1:x}]",m_bus_num,m_dev_addr);
@@ -150,7 +152,7 @@ namespace cib
         return CIB_I2C_ErrorOpenDevice;
       }
       m_is_open = true;
-      int ret = select_device();
+      ret = select_device();
       if (ret != CIB_I2C_OK)
       {
         close_device();
@@ -246,11 +248,12 @@ namespace cib
       {
         return CIB_I2C_ErrorDeviceNotOpen;
       }
-      int ret = select_device();
-      if (ret != CIB_I2C_OK)
-      {
-        return ret;
-      }
+      int ret;
+//      = select_device();
+//      if (ret != CIB_I2C_OK)
+//      {
+//        return ret;
+//      }
       uint8_t msg = data;
       uint8_t cache;
       if (mask != 0xFFFF)
@@ -275,15 +278,17 @@ namespace cib
 
     int  Device::write_word_register_smbus(const uint8_t addr, const uint16_t data, const uint16_t mask)
     {
+      int ret;
+
       if (!m_is_open)
       {
         return CIB_I2C_ErrorDeviceNotOpen;
       }
-      int ret = select_device();
-      if (ret != CIB_I2C_OK)
-      {
-        return ret;
-      }
+//      int ret = select_device();
+//      if (ret != CIB_I2C_OK)
+//      {
+//        return ret;
+//      }
       uint16_t msg = data;
       uint16_t cache;
       if (mask != 0xFFFF)
@@ -308,15 +313,16 @@ namespace cib
 
     int  Device::write_block_register_smbus(const uint8_t addr, const uint8_t len, const uint8_t *data)
     {
+      int ret;
       if (!m_is_open)
       {
         return CIB_I2C_ErrorDeviceNotOpen;
       }
-      int ret = select_device();
-      if (ret != CIB_I2C_OK)
-      {
-        return ret;
-      }
+//      int ret = select_device();
+//      if (ret != CIB_I2C_OK)
+//      {
+//        return ret;
+//      }
       // verify that the size is withing limits allowed by smbus
       if  (len > 32)
       {
@@ -339,15 +345,17 @@ namespace cib
 
     int  Device::read_byte_register_smbus(const uint8_t addr, uint8_t &data)
     {
+      int ret;
+
       if (!m_is_open)
       {
         return CIB_I2C_ErrorDeviceNotOpen;
       }
-      int ret = select_device();
-      if (ret != CIB_I2C_OK)
-      {
-        return ret;
-      }
+//      int ret = select_device();
+//      if (ret != CIB_I2C_OK)
+//      {
+//        return ret;
+//      }
       ret = i2c_smbus_read_byte_data(m_fd,addr);
       if (ret < 0)
       {
@@ -360,15 +368,16 @@ namespace cib
 
     int  Device::read_word_register_smbus(const uint8_t addr, uint16_t &data)
     {
+      int ret;
       if (!m_is_open)
       {
         return CIB_I2C_ErrorDeviceNotOpen;
       }
-      int ret = select_device();
-      if (ret != CIB_I2C_OK)
-      {
-        return ret;
-      }
+//      int ret = select_device();
+//      if (ret != CIB_I2C_OK)
+//      {
+//        return ret;
+//      }
       SPDLOG_LOGGER_DEBUG(m_log,"Calling read word with [{0} : 0x{1:x}]",m_fd,addr);
       ret = i2c_smbus_read_word_data(m_fd,addr);
       if (ret < 0)
@@ -383,15 +392,16 @@ namespace cib
     }
     int  Device::read_block_register_smbus(const uint8_t addr, uint8_t &len, uint8_t *&data)
     {
+      int ret;
       if (!m_is_open)
       {
         return CIB_I2C_ErrorDeviceNotOpen;
       }
-      int ret = select_device();
-      if (ret != CIB_I2C_OK)
-      {
-        return ret;
-      }
+//      int ret = select_device();
+//      if (ret != CIB_I2C_OK)
+//      {
+//        return ret;
+//      }
       if (!(m_dev_funcs & I2C_FUNC_SMBUS_READ_BLOCK_DATA))
       {
         return CIB_I2C_ErrorFuncNotSupported;
