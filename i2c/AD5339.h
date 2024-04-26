@@ -37,20 +37,16 @@ namespace cib
      clr_bar  : 0 : clear the DAC (fill with 0); 1: normal operation
      */
 
-    // the structure arrives reversed byte aligned
-//    typedef struct dac_msg_t
-//    {
-//      uint8_t level_lsb;
-//      uint8_t level_msb : 4;
-//      uint8_t ldac_bar  : 1;
-//      uint8_t clr_bar : 1;
-//      uint8_t pd0       : 1;
-//      uint8_t pd1       : 1;
-//      dac_msg_t() {*reinterpret_cast<uint16_t*>(this) = 0x0;};
-//      uint16_t get_level() {return (*reinterpret_cast<uint16_t*>(this) & 0xFFF);}
-//      void set_level(const uint16_t v) {level_lsb = (v & 0xFF); level_msb = ((v>>8) & 0xF);}
-//      uint16_t get_u16() {return *reinterpret_cast<uint16_t*>(this);}
-//    } dac_msg_t;
+    /*
+     * BE CAREFUL WITH BYTE SORTING
+     *
+     * This DAC (and many I2C devices capable of multibyte transaction) return the answer in reverse byte order
+     * This means that the read call percieves the msB as the lsB and vice-verse
+     * We can either force the change at read time, or flip the structure to reflect that
+     * I followed the second.
+     * For instance, a reading of a DAC level of BCC returns a read of 0xCC2B
+     * 0x2B being the MSByte and 0xCC being the LSByte
+     */
 
     typedef struct dac_msg_t
     {
@@ -61,7 +57,7 @@ namespace cib
       uint8_t pd1       : 1;
       uint8_t level_lsb;
       dac_msg_t() {*reinterpret_cast<uint16_t*>(this) = 0x0;};
-      uint16_t get_level() {return (*reinterpret_cast<uint16_t*>(this) & 0xFFF);}
+      uint16_t get_level() {uint16_t res = level_msb; res = (res << 8) | level_lsb; return res;}
       void set_level(const uint16_t v) {level_lsb = (v & 0xFF); level_msb = ((v>>8) & 0xF);}
       uint16_t get_u16() {return *reinterpret_cast<uint16_t*>(this);}
     } dac_msg_t;
