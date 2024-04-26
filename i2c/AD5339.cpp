@@ -7,6 +7,15 @@
 
 #include <AD5339.h>
 
+extern "C"
+{
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+#include <linux/i2c-dev.h>
+#include <linux/i2c.h>
+#include <i2c/smbus.h>
+}
 namespace cib
 {
   namespace i2c
@@ -22,6 +31,7 @@ namespace cib
 
     int AD5339::get_level(const Channel ch, uint16_t &value)
     {
+      int ret;
       if (!m_is_open)
       {
         return CIB_I2C_ErrorDeviceNotOpen;
@@ -53,13 +63,34 @@ namespace cib
       }
       uint16_t word = 0x0;
       SPDLOG_LOGGER_DEBUG(m_log,"Getting level with [{0:x}]",ptr.get_u8());
-      int ret = read_word_register_smbus(ptr.get_u8(),word);
-      if (ret != CIB_I2C_OK)
-      {
-        // something failed
-        value = 0x0;
-        return ret;
-      }
+
+      // first write
+      // Option 1 :
+      ret = i2c_smbus_write_byte(m_fd,ptr.get_u8());
+      SPDLOG_LOGGER_TRACE(m_log,"Got ret {0}",ret);
+      ret = i2c_smbus_read_word_data(m_fd,ptr.get_u8());
+      SPDLOG_LOGGER_TRACE(m_log,"Got ret {0} {0:x}",ret);
+
+//      // option 2 :
+//      uint8_t message[3] ;
+//      message[0] = ptr.get_u8();
+//      message[1] = 0x0;
+//      message[2] = 0x0;
+//      int i = write ( m_fd , message , 1 ) ;
+//      SPDLOG_LOGGER_TRACE(m_log,"Got ret {0}",i);
+//      i = write ( m_fd , message , 2 ) ;
+//      SPDLOG_LOGGER_TRACE(m_log,"Got ret {0} [{1:x} {2:x} {3:x}]",i);
+//
+//      ret = i2c_smbus_write_byte_data(m_fd,ptr.get_u8());
+//      ret = i2c_smbus_read_word_data(ptr.get_u8(),word);
+//
+//      if (ret != CIB_I2C_OK)
+//      {
+//        // something failed
+//        value = 0x0;
+//        return ret;
+//      }
+
       SPDLOG_LOGGER_TRACE(m_log,"Received word {0} [0x{0:x}]",word,word);
       dac_msg_t msg = *reinterpret_cast<dac_msg_t*>(&word);
       SPDLOG_LOGGER_TRACE(m_log,"Recasted word {0} [0x{0:x}]",msg.get_u16(),msg.get_u16());
