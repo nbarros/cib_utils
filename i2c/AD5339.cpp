@@ -66,10 +66,10 @@ namespace cib
 
       // first write
       // Option 1 :
-      ret = i2c_smbus_write_byte(m_fd,ptr.get_u8());
-      SPDLOG_LOGGER_TRACE(m_log,"Got ret {0}",ret);
-      ret = i2c_smbus_read_word_data(m_fd,ptr.get_u8());
-      SPDLOG_LOGGER_TRACE(m_log,"Got ret {0} {0:x}",ret);
+      //ret = i2c_smbus_write_byte(m_fd,ptr.get_u8());
+      //SPDLOG_LOGGER_TRACE(m_log,"Got ret {0}",ret);
+      //ret = i2c_smbus_read_word_data(m_fd,ptr.get_u8());
+      //SPDLOG_LOGGER_TRACE(m_log,"Got ret {0} {0:x}",ret);
 
 //      // option 2 :
 //      uint8_t message[3] ;
@@ -84,6 +84,8 @@ namespace cib
 //      ret = i2c_smbus_write_byte_data(m_fd,ptr.get_u8());
 //      ret = i2c_smbus_read_word_data(ptr.get_u8(),word);
 //
+        ret = read_word_register_smbus(ptr.get_u8(),word);
+        SPDLOG_LOGGER_TRACE(m_log,"Got ret {0}",ret);
 //      if (ret != CIB_I2C_OK)
 //      {
 //        // something failed
@@ -93,7 +95,7 @@ namespace cib
 
       SPDLOG_LOGGER_TRACE(m_log,"Received word {0} [0x{0:x}]",word,word);
       dac_msg_t msg = *reinterpret_cast<dac_msg_t*>(&word);
-      SPDLOG_LOGGER_TRACE(m_log,"Recasted word {0} [0x{0:x}]",msg.get_u16(),msg.get_u16());
+      //SPDLOG_LOGGER_TRACE(m_log,"Recasted word {0} [0x{0:x}]",msg.get_u16(),msg.get_u16());
       SPDLOG_LOGGER_DEBUG(m_log,"DAC value : {0} [0x{0:x}]",msg.get_level(),msg.get_level());
       value = msg.get_level();
 
@@ -102,6 +104,7 @@ namespace cib
 
     int AD5339::set_level(const Channel ch, const uint16_t value)
     {
+      int ret;
       if (!m_is_open)
       {
         return CIB_I2C_ErrorDeviceNotOpen;
@@ -133,9 +136,14 @@ namespace cib
       dac_msg_t msg;
       msg.clr_bar = 1;
       msg.set_level(value);
-      SPDLOG_LOGGER_TRACE(m_log,"Calling write with args [{0:x}] [0x{1:x}] (crosscheck ch 0x{2:x} val 0x{3:x})",ptr.get_u8(),msg.get_u16(),static_cast<int>(ch),value);
+      SPDLOG_LOGGER_TRACE(m_log,"Calling write with args [0x{0:x}] [0x{1:x}] (crosscheck ch 0x{2:x} val 0x{3:x})",ptr.get_u8(),msg.get_u16(),static_cast<int>(ch),value);
       //printf("About to write 0x%X 0x%X (crosscheck : 0x%X 0x%X)\n",ptr.get_u8(),msg.get_u16(),static_cast<int>(ch),value);
-      int ret = write_word_register_smbus(ptr.get_u8(),msg.get_u16());
+      ret = write_word_register_smbus(ptr.get_u8(),msg.get_u16());
+      //      uint8_t msg2[3];
+      //      msg2[0] = msg.get_u16() & 0xFF;
+      //      msg2[1] = (msg.get_u16()  >> 8 )  & 0xFF;
+      //      msg2[2] = 0x0;
+      //      ret = write_block_register_smbus(ptr.get_u8(),2,msg2);
       if (ret != CIB_I2C_OK)
       {
         SPDLOG_LOGGER_ERROR(m_log,"Write reported failure");

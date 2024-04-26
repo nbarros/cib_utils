@@ -31,7 +31,7 @@ int check_result(int res)
 {
   if (res != CIB_I2C_OK)
   {
-    spdlog::critical("Failed to execute function. Returned 0x{:X} ({})\n",res,cib::i2c::strerror(res));
+    spdlog::critical("Failed to execute function. Returned 0x{:X} ({})",res,cib::i2c::strerror(res));
     return 1;
   }
   return 0;
@@ -39,7 +39,7 @@ int check_result(int res)
 
 void print_usage(const char* prog)
 {
-  printf("Usage : %s [-b bus] [-d device] [cmd]\n",prog);
+  printf("Usage : %s [-b bus] [-d device] [cmd]",prog);
 }
 
 void print_help()
@@ -60,12 +60,12 @@ int print_bit_result(const int ret, const uint32_t val)
 {
   if (ret != CIB_I2C_OK)
   {
-    spdlog::error("Failed to read the CDR chip. Returned code 0x{%X} (%s)\n",ret,cib::i2c::strerror(ret));
+    spdlog::error("Failed to read the CDR chip. Returned code 0x{0:X} {1}",ret,cib::i2c::strerror(ret));
     return 1;
   }
   else
   {
-    spdlog::trace("State : %u \n",val);
+    spdlog::trace("State : {0} ",val);
     return 0;
   }
 }
@@ -84,7 +84,7 @@ int run_command(AD5339 &dac, int argc,char**argv)
     if (argc != 2)
     {
       ch = AD5339::CH_ALL;
-      spdlog::debug("Clearing all channels\n");
+      spdlog::debug("Clearing all channels");
     }
     else
     {
@@ -110,7 +110,7 @@ int run_command(AD5339 &dac, int argc,char**argv)
     }
     else
     {
-      spdlog::info("DAC level : %hu\n",level);
+      spdlog::info("DAC level : {0}",level);
     }
     return 0;
   }
@@ -130,14 +130,14 @@ int run_command(AD5339 &dac, int argc,char**argv)
     uint16_t level = (uint16_t) strtoul(argv[2], NULL, 0);
     if (level > 0xFFF)
     {
-      spdlog::error("Invalid value. Max DAC value is {:x}\n",0xFFF);
+      spdlog::error("Invalid value. Max DAC value is {:x}",0xFFF);
       return 0;
     }
     // all good. Go for it
     int ret = dac.set_level(ch,level);
     if (ret != CIB_I2C_OK)
     {
-      spdlog::error("Failed to set level: [%d : %s]\n",ret,cib::i2c::strerror(ret));
+      spdlog::error("Failed to set level: [{0} : {1}]",ret,cib::i2c::strerror(ret));
     }
     else
     {
@@ -150,7 +150,7 @@ int run_command(AD5339 &dac, int argc,char**argv)
   }
   else
   {
-    spdlog::error("Unrecognized Command: %s\n",argv[0]);
+    spdlog::error("Unrecognized Command: {0}",argv[0]);
     return 0;
   }
   return 0;
@@ -173,11 +173,11 @@ int main( int argc, char**argv)
   spdlog::info( "spdlog active level {}",SPDLOG_ACTIVE_LEVEL);
 
 
-  int bus = 7, dev = 0x60;
+  int bus = 7, dev = 0xd;
   opterr = 0;
 
 
-  while ((c = getopt (argc, argv, "b:d:c:")) != -1)
+  while ((c = getopt (argc, argv, "b:d:h:")) != -1)
   {
     switch (c)
       {

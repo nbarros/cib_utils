@@ -378,7 +378,7 @@ namespace cib
 //      {
 //        return ret;
 //      }
-      SPDLOG_LOGGER_DEBUG(m_log,"Calling read word with [{0} : 0x{1:x}]",m_fd,addr);
+      SPDLOG_LOGGER_DEBUG(m_log,"Calling read word with [fd {0} : add 0x{1:x}]",m_fd,addr);
       ret = i2c_smbus_read_word_data(m_fd,addr);
       if (ret < 0)
       {
