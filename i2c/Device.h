@@ -90,6 +90,10 @@ namespace cib
     protected:
       // protetected functions.Still avilable on derived objects
       const char* byte_to_binary(uint8_t x);
+      const char*  u16_to_binary(uint16_t x);
+      const char*  u32_to_binary(uint32_t x);
+      const char*  u64_to_binary(uint64_t x);
+
       int select_device();
 
     protected:

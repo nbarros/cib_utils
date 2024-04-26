@@ -163,7 +163,7 @@ namespace cib
       }
       else
       {
-        SPDLOG_LOGGER_INFO(m_log,"Device functionality[{0}]",m_dev_funcs);
+        SPDLOG_LOGGER_INFO(m_log,"Device functionality : [{0}] [{1}]",m_dev_funcs,u64_to_binary(m_dev_funcs));
       }
 
       return CIB_I2C_OK;
@@ -431,14 +431,50 @@ namespace cib
       b[0] = '\0';
 
       int z;
-      for (z = 128; z > 0; z >>= 1)
+      for (z = (1UL<<7); z > 0; z >>= 1)
       {
         strcat(b, ((x & z) == z) ? "1" : "0");
       }
 
       return b;
-
     }
+    const char*  Device::u64_to_binary(uint64_t x)
+    {
+      static char b[65];
+      b[0] = '\0';
+
+      uint64_t z;
+      for (z = (1UL<<63); z > 0; z >>= 1)
+      {
+        strcat(b, ((x & z) == z) ? "1" : "0");
+      }
+      return b;
+    }
+    const char*  Device::u16_to_binary(uint16_t x)
+    {
+      static char b[17];
+      b[0] = '\0';
+
+      int z;
+      for (z = (1UL<<15); z > 0; z >>= 1)
+      {
+        strcat(b, ((x & z) == z) ? "1" : "0");
+      }
+      return b;
+    }
+    const char*  Device::u32_to_binary(uint32_t x)
+    {
+      static char b[33];
+      b[0] = '\0';
+
+      int z;
+      for (z = (1UL<<31); z > 0; z >>= 1)
+      {
+        strcat(b, ((x & z) == z) ? "1" : "0");
+      }
+      return b;
+    }
+
 
   } /* namespace i2c */
 } /* namespace cib */

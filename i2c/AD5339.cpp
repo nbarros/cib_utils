@@ -60,10 +60,10 @@ namespace cib
         value = 0x0;
         return ret;
       }
-      SPDLOG_LOGGER_TRACE(m_log,"Received word {0} [0x{0:x}]\n",word,word);
+      SPDLOG_LOGGER_TRACE(m_log,"Received word {0} [0x{0:x}]",word,word);
       dac_msg_t msg = *reinterpret_cast<dac_msg_t*>(&word);
-      SPDLOG_LOGGER_TRACE(m_log,"Recasted word {0} [0x{0:x}]\n",msg.get_u16(),msg.get_u16());
-      SPDLOG_LOGGER_DEBUG(m_log,"DAC value : {0} [0x{0:x}]\n",msg.get_level(),msg.get_level());
+      SPDLOG_LOGGER_TRACE(m_log,"Recasted word {0} [0x{0:x}]",msg.get_u16(),msg.get_u16());
+      SPDLOG_LOGGER_DEBUG(m_log,"DAC value : {0} [0x{0:x}]",msg.get_level(),msg.get_level());
       value = msg.get_level();
 
       return CIB_I2C_OK;
@@ -75,11 +75,11 @@ namespace cib
       {
         return CIB_I2C_ErrorDeviceNotOpen;
       }
-      int ret = select_device();
-      if (ret != CIB_I2C_OK)
-      {
-        return ret;
-      }
+//      int ret = select_device();
+//      if (ret != CIB_I2C_OK)
+//      {
+//        return ret;
+//      }
       // remember that this actually words in two steps
       // first a pointer word and then a data word
       dac_ptr_t ptr;
@@ -96,19 +96,21 @@ namespace cib
           ptr.dac_b = 1;
           break;
         default:
-          printf("Unknown channel %d\n",static_cast<int>(ch));
+          SPDLOG_LOGGER_ERROR(m_log,"Unknown channel {}",static_cast<int>(ch));
           return CIB_I2C_ErrorInvalidArgument;
       }
       dac_msg_t msg;
       msg.clr_bar = 1;
       msg.set_level(value);
-      printf("About to write 0x%X 0x%X (crosscheck : 0x%X 0x%X)\n",ptr.get_u8(),msg.get_u16(),static_cast<int>(ch),value);
-      ret = write_word_register_smbus(ptr.get_u8(),msg.get_u16());
+      SPDLOG_LOGGER_TRACE(m_log,"Calling write with args [{0:x}] [0x{1:x}] (crosscheck ch 0x{2:x} val 0x{3:x})",ptr.get_u8(),msg.get_u16(),static_cast<int>(ch),value);
+      //printf("About to write 0x%X 0x%X (crosscheck : 0x%X 0x%X)\n",ptr.get_u8(),msg.get_u16(),static_cast<int>(ch),value);
+      int ret = write_word_register_smbus(ptr.get_u8(),msg.get_u16());
       if (ret != CIB_I2C_OK)
       {
-        printf("Write seems to have failed.\n");
+        SPDLOG_LOGGER_ERROR(m_log,"Write reported failure");
         return ret;
       }
+      SPDLOG_LOGGER_TRACE(m_log,"Write complete");
       return CIB_I2C_OK;
     }
 
@@ -139,7 +141,7 @@ namespace cib
           ptr.dac_b = 1;
           break;
         default:
-          printf("Unknown channel %d\n",static_cast<int>(ch));
+          SPDLOG_LOGGER_ERROR(m_log,"Unknown channel {}",static_cast<int>(ch));
           return CIB_I2C_ErrorInvalidArgument;
       }
       dac_msg_t msg;
@@ -147,7 +149,7 @@ namespace cib
       ret = write_word_register_smbus(ptr.get_u8(),msg.get_u16());
       if (ret != CIB_I2C_OK)
       {
-        printf("Clear seems to have failed.\n");
+        SPDLOG_LOGGER_ERROR(m_log,"Write reported failure");
         return ret;
       }
       return CIB_I2C_OK;
