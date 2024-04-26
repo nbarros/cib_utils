@@ -11,12 +11,16 @@
 #include <cstdint>
 #include <string>
 #include <cstdio>
+#include <memory>
+
 extern "C"
 {
   #include <inttypes.h>
   #include <linux/i2c.h>
   #include <linux/i2c-dev.h>
 }
+#include <spdlog/spdlog.h>
+
 #define BIT(n) (1UL << n)
 
 namespace cib
@@ -95,6 +99,8 @@ namespace cib
       int m_bus_num;
       int m_dev_addr;
       uint64_t m_dev_funcs;
+      std::shared_ptr<spdlog::logger> m_log;
+
     };
 
   } /* namespace i2c */

@@ -6,6 +6,8 @@
  */
 
 #include <AD5339.h>
+#include <spdlog/spdlog.h>
+#include <spdlog/cfg/env.h>
 
 namespace cib
 {
@@ -14,7 +16,6 @@ namespace cib
 
     AD5339::AD5339 ()
         {
-
         }
 
     AD5339::~AD5339 ()
@@ -48,7 +49,7 @@ namespace cib
           ptr.dac_b = 1;
           break;
         default:
-          printf("Unknown channel %d\n",static_cast<int>(ch));
+          spdlog::info("Unknown channel {}\n",static_cast<int>(ch));
           return CIB_I2C_ErrorInvalidArgument;
       }
       uint16_t word = 0x0;

@@ -21,6 +21,8 @@ extern "C"
 #include <readline/history.h>
 
 }
+#include <spdlog/spdlog.h>
+//#include <spdlog/cfg/env.h>
 
 using cib::i2c::AD5339;
 
@@ -29,7 +31,7 @@ int check_result(int res)
 {
   if (res != CIB_I2C_OK)
   {
-    printf("Failed to execute function. Returned 0x%X (%s)\n",res,cib::i2c::strerror(res));
+    spdlog::critical("Failed to execute function. Returned 0x{:X} ({})\n",res,cib::i2c::strerror(res));
     return 1;
   }
   return 0;
@@ -58,12 +60,12 @@ int print_bit_result(const int ret, const uint32_t val)
 {
   if (ret != CIB_I2C_OK)
   {
-    printf("Failed to read the CDR chip. Returned code 0x%X (%s)\n",ret,cib::i2c::strerror(ret));
+    spdlog::error("Failed to read the CDR chip. Returned code 0x{%X} (%s)\n",ret,cib::i2c::strerror(ret));
     return 1;
   }
   else
   {
-    printf("State : %u \n",val);
+    spdlog::trace("State : %u \n",val);
     return 0;
   }
 }
@@ -82,13 +84,13 @@ int run_command(AD5339 &dac, int argc,char**argv)
     if (argc != 2)
     {
       ch = AD5339::CH_ALL;
-      printf("Clearning all channelsn");
+      spdlog::debug("Clearing all channels\n");
     }
     else
     {
       ch = static_cast<AD5339::Channel>((uint16_t) strtoul(argv[1], NULL, 0));
     }
-
+    spdlog::trace("Clearing command argument : {0}",static_cast<uint16_t>(ch));
     dac.clear(ch);
     return 0;
   }
@@ -96,7 +98,7 @@ int run_command(AD5339 &dac, int argc,char**argv)
   {
     if (argc != 2)
     {
-      printf("Usage: get_dac <channel>\n");
+      spdlog::warn("Usage: get_dac <channel>");
       return 0;
     }
     uint16_t ch = (uint16_t) strtoul(argv[1], NULL, 0);
@@ -104,11 +106,11 @@ int run_command(AD5339 &dac, int argc,char**argv)
     int ret = dac.get_level(ch,level);
     if (ret != CIB_I2C_OK)
     {
-      printf("Failed to get level: [%d : %s]\n",ret,cib::i2c::strerror(ret));
+      spdlog::error("Failed to get level: [{0} : {}]",ret,cib::i2c::strerror(ret));
     }
     else
     {
-      printf("DAC level : %hu\n",level);
+      spdlog::info("DAC level : %hu\n",level);
     }
     return 0;
   }
@@ -116,30 +118,30 @@ int run_command(AD5339 &dac, int argc,char**argv)
   {
     if (argc != 3)
     {
-      printf("Usage: set_dac <channel> <value>\n");
+      spdlog::warn("Usage: set_dac <channel> <value>");
       return 0;
     }
     uint16_t ch = (uint16_t) strtoul(argv[1], NULL, 0);
     if (ch > 3)
     {
-      printf("Invalid channel. Channel must be one of 1, 2 or 3 (for both DACs)\n");
+      spdlog::error("Invalid channel. Channel must be one of 1, 2 or 3 (for both DACs)");
       return 0;
     }
     uint16_t level = (uint16_t) strtoul(argv[2], NULL, 0);
     if (level > 0xFFF)
     {
-      printf("Invalid value. Max DAC value is %hu\n",0xFFF);
+      spdlog::error("Invalid value. Max DAC value is {:x}\n",0xFFF);
       return 0;
     }
     // all good. Go for it
     int ret = dac.set_level(ch,level);
     if (ret != CIB_I2C_OK)
     {
-      printf("Failed to set level: [%d : %s]\n",ret,cib::i2c::strerror(ret));
+      spdlog::error("Failed to set level: [%d : %s]\n",ret,cib::i2c::strerror(ret));
     }
     else
     {
-      printf("DAC set successfully : %hu\n",level);
+      spdlog::info("DAC set successfully : {}",level);
     }
     return 0;
   }
@@ -148,7 +150,7 @@ int run_command(AD5339 &dac, int argc,char**argv)
   }
   else
   {
-    printf("Unrecognized Command: %s\n",argv[0]);
+    spdlog::error("Unrecognized Command: %s\n",argv[0]);
     return 0;
   }
   return 0;
@@ -157,9 +159,23 @@ int run_command(AD5339 &dac, int argc,char**argv)
 int main( int argc, char**argv)
 {
   int c;
+  //auto console = spdlog::stdout_color_mt("console");
+
+  //spdlog::get("console")->set_pattern("[%s:%!:%#][%^%L%$] [thread %t] %v");
+  spdlog::set_pattern("[%^%L%$] %v");
+  spdlog::set_level(spdlog::level::trace); // Set global log level to debug
+  // if the SPDLOG_LEVEL variable is set, it overrides
+  //SPDLOG_LEVEL=info,mylogger=trace
+
+  //spdlog::cfg::load_env_levels();
+  // if the level was not
+
+  spdlog::info( "spdlog active level {}",SPDLOG_ACTIVE_LEVEL);
+
 
   int bus = 7, dev = 0x60;
   opterr = 0;
+
 
   while ((c = getopt (argc, argv, "b:d:c:")) != -1)
   {
@@ -186,23 +202,24 @@ int main( int argc, char**argv)
 
   AD5339 dac;
 
-  printf("Looking for DAC at address [%d:%X]\n",bus,dev);
+  spdlog::info("Looking for DAC at address {0}:{1:x}",bus,dev);
+
   if (check_result(dac.set_bus(bus)))
   {
     return 1;
   }
-  printf("Bus set\n");
+  spdlog::trace("Set bus to {0}",bus);
   if (check_result(dac.set_dev_number(dev)))
   {
     return 1;
   }
-  printf("address set\n");
+  spdlog::trace("Set dev to {0:x}",dev);
 
   if (check_result(dac.open_device()))
   {
     return 1;
   }
-  printf("Dev openedset\n");
+  spdlog::debug("Device open.");
   if (optind < argc)
   {
     return run_command(dac,argc-optind,argv+optind);
