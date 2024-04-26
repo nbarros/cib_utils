@@ -60,7 +60,7 @@ int print_bit_result(const int ret, const uint32_t val)
 {
   if (ret != CIB_I2C_OK)
   {
-    spdlog::error("Failed to read the CDR chip. Returned code 0x{0:X} {1}",ret,cib::i2c::strerror(ret));
+    spdlog::error("Failed to read the DAC chip. Returned code 0x{0:X} {1}",ret,cib::i2c::strerror(ret));
     return 1;
   }
   else
@@ -260,7 +260,7 @@ int main( int argc, char**argv)
         free(buf);
     }
   }
-
+  spdlog::info("Closing the device");
   dac.close_device();
   return 0;
 }

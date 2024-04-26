@@ -13,9 +13,9 @@ target_link_libraries(cib_i2c i2c spdlog::spdlog)
 
 add_executable(test_struct test_struct_msb.cpp)
 
-add_executable(check_cdr_chip check_cdr_chip.cpp)
-target_include_directories(check_cdr_chip PRIVATE ${PROJECT_SOURCE_DIR}/i2c)
-target_link_libraries(check_cdr_chip cib_i2c readline i2c spdlog)
+add_executable(cdr_manager cdr_manager.cpp)
+target_include_directories(cdr_manager PRIVATE ${PROJECT_SOURCE_DIR}/i2c)
+target_link_libraries(cdr_manager cib_i2c readline i2c spdlog)
 
 add_executable(dac_manager dac_manager.cpp)
 target_include_directories(dac_manager PRIVATE ${PROJECT_SOURCE_DIR}/i2c)

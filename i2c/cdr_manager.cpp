@@ -11,8 +11,8 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "../i2c/ADN2814.h"
-#include "../i2c/ADN2814_ratemap.h"
+#include <ADN2814.h>
+#include <ADN2814_ratemap.h>
 
 extern "C"
 {
@@ -23,6 +23,8 @@ extern "C"
 
 }
 
+#include <spdlog/spdlog.h>
+
 using cib::i2c::ADN2814;
 
 
@@ -30,7 +32,7 @@ int check_result(int res)
 {
   if (res != CIB_I2C_OK)
   {
-    printf("Failed to execute function. Returned 0x%X (%s)\n",res,cib::i2c::strerror(res));
+    spdlog::critical("Failed to execute function. Returned 0x{:X} ({})",res,cib::i2c::strerror(res));
     return 1;
   }
   return 0;
@@ -38,11 +40,12 @@ int check_result(int res)
 
 void print_usage(const char* prog)
 {
-  printf("Usage : %s [-b bus] [-d device] [cmd]\n",prog);
+  spdlog::warn("Usage : {0} [-b bus] [-d device] [cmd]\n",prog);
 }
 
 void print_help()
 {
+  printf("\n\n=============================================================================================\n");
   printf("Available commands:\n");
   printf("  reset\n");
   printf("    Reset the CDR chip\n");
@@ -66,6 +69,7 @@ void print_help()
   printf("    Set the polarity of LOS [1: active high; 0: active low]\n");
   printf("  exit\n");
   printf("    Closes the command interface\n");
+  printf("=============================================================================================\n\n");
 
 }
 
@@ -73,12 +77,12 @@ int print_bit_result(const int ret, const uint32_t val)
 {
   if (ret != CIB_I2C_OK)
   {
-    printf("Failed to read the CDR chip. Returned code 0x%X (%s)\n",ret,cib::i2c::strerror(ret));
+    spdlog::error("Failed to read the CDR chip. Returned code 0x{0:X} {1}",ret,cib::i2c::strerror(ret));
     return 1;
   }
   else
   {
-    printf("State : %u \n",val);
+    spdlog::trace("State : {0} ",val);
     return 0;
   }
 }
@@ -93,11 +97,13 @@ int run_command(ADN2814 &cdr, int argc,char**argv)
   }
   else if (cmd == "reset")
   {
+    spdlog::info("Resetting CDR chip");
     cdr.reset();
     return 0;
   }
   else if (cmd == "reset_misc_4")
   {
+    spdlog::info("Resetting CDR MISC[4] bit (static LOL)");
     cdr.reset_misc_4();
     return 0;
   }
@@ -107,12 +113,12 @@ int run_command(ADN2814 &cdr, int argc,char**argv)
     int res = cdr.get_data_rate(rate);
     if (res != CIB_I2C_OK)
     {
-      printf("Failed to read the CDR chip. Returned code 0x%X (%s)\n",res,cib::i2c::strerror(res));
+      spdlog::critical("Failed to read the CDR chip. Returned code 0x{0:X} ({1})",res,cib::i2c::strerror(res));
       return 1;
     }
     else
     {
-      printf("Rate measurement : %d : [%f] MHz\n",rate,ratemap.at(rate));
+      spdlog::info("Rate measurement : {0} : {1} MHz",rate,ratemap.at(rate));
       return 0;
     }
   }
@@ -138,7 +144,7 @@ int run_command(ADN2814 &cdr, int argc,char**argv)
   {
     if (argc != 2)
     {
-      printf("Usage: set_lol_operation operation <1:static; 0: normal>\n");
+      spdlog::warn("Usage: set_lol_operation operation <1:static; 0: normal>");
       return 0;
     }
     uint16_t val = (uint16_t) strtoul(argv[1], NULL, 0);;
@@ -150,7 +156,7 @@ int run_command(ADN2814 &cdr, int argc,char**argv)
   {
     if (argc != 2)
     {
-      printf("Usage: set_output_boost operation <1:boost; 0: normal>\n");
+      spdlog::warn("Usage: set_output_boost operation <1:boost; 0: normal>");
       return 0;
     }
     uint16_t val = (uint16_t) strtoul(argv[1], NULL, 0);
@@ -161,7 +167,7 @@ int run_command(ADN2814 &cdr, int argc,char**argv)
   {
     if (argc != 2)
     {
-      printf("Usage: set_squelch_mode mode <1:OR; 0: AND>\n");
+      spdlog::warn("Usage: set_squelch_mode mode <1:OR; 0: AND>");
       return 0;
     }
     uint16_t val = (uint16_t) strtoul(argv[1], NULL, 0);;
@@ -173,7 +179,7 @@ int run_command(ADN2814 &cdr, int argc,char**argv)
   {
     if (argc != 2)
     {
-      printf("Usage: set_los_polarity mode <1:active high; 0: active low>\n");
+      spdlog::warn("Usage: set_los_polarity mode <1:active high; 0: active low>");
       return 0;
     }
     uint16_t val = (uint16_t) strtoul(argv[1], NULL, 0);;
@@ -186,7 +192,7 @@ int run_command(ADN2814 &cdr, int argc,char**argv)
   }
   else
   {
-    printf("Unrecognized Command: %s\n",argv[0]);
+    spdlog::error("Unrecognized Command: {0}",argv[0]);
     return 0;
   }
   return 0;
@@ -195,6 +201,9 @@ int run_command(ADN2814 &cdr, int argc,char**argv)
 int main( int argc, char**argv)
 {
   int c;
+  spdlog::set_pattern("[%^%L%$] %v");
+  spdlog::set_level(spdlog::level::trace); // Set global log level to debug
+  spdlog::info( "spdlog active level {}",SPDLOG_ACTIVE_LEVEL);
 
   int bus = 7, dev = 0x60;
   opterr = 0;
@@ -224,21 +233,23 @@ int main( int argc, char**argv)
 
   ADN2814 cdr;
 
-  printf("Looking for CDR at address [%d:%X]\n",bus,dev);
+  spdlog::info("Looking for CDR at address {0}:{1:x}",bus,dev);
   if (check_result(cdr.set_bus(bus)))
   {
     return 1;
   }
+  spdlog::trace("Set bus to {0}",bus);
   if (check_result(cdr.set_dev_number(dev)))
   {
     return 1;
   }
+  spdlog::trace("Set dev to {0:x}",dev);
 
   if (check_result(cdr.open_device()))
   {
     return 1;
   }
-
+  spdlog::debug("Device open.");
   if (optind < argc)
   {
     return run_command(cdr,argc-optind,argv+optind);
@@ -279,7 +290,7 @@ int main( int argc, char**argv)
         free(buf);
     }
   }
-
+  spdlog::info("Closing the device");
   cdr.close_device();
   return 0;
 }

@@ -115,7 +115,9 @@ i2ctransfer -v -y 8 w1@0xd 0x1 r2
 3. Write into both DACs the value 0xBBB
 
 i2ctransfer -v -y 8 w3@0xd 0x3 0x2B 0xBB
+---------------------------------------------------
 
+DAC : 0xD is the real address. See above for details on access of the registers.
 
 ---------------------------------------------------
 

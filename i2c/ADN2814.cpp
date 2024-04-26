@@ -28,7 +28,7 @@ namespace cib
         return CIB_I2C_ErrorDeviceNotOpen;
       }
       // we cannot do this measurement, since we do nto have a reference clock
-      printf("Can't measure fine frequency since we do not have a reference clock.\n");
+      SPDLOG_LOGGER_ERROR(m_log,"Can't measure fine frequency since we do not have a reference clock.");
       return 0x0;
 
       uint32_t freq;
@@ -37,14 +37,14 @@ namespace cib
       int ret = read_register(0x2,tmp);
       if (ret != CIB_I2C_OK)
       {
-        printf("Error reading register\n");
+        SPDLOG_LOGGER_ERROR(m_log,"Error reading register 0x2");
         return ret;
       }
       freq = tmp;
       ret = read_register(0x1,tmp);
       if (ret != CIB_I2C_OK)
       {
-        printf("Error reading register\n");
+        SPDLOG_LOGGER_ERROR(m_log,"Error reading register 0x1");
         return ret;
       }
       // shift the existing value
@@ -52,12 +52,14 @@ namespace cib
       ret = read_register(0x0,tmp);
       if (ret != CIB_I2C_OK)
       {
-        printf("Error reading register\n");
+        SPDLOG_LOGGER_ERROR(m_log,"Error reading register 0x0");
         return ret;
       }
       // shift the existing value and append the new
       freq = (freq << 8) | tmp;
       rate = freq;
+      SPDLOG_LOGGER_DEBUG(m_log,"Computed fine frequency {:0.4f}",rate);
+
       return ret;
     }
 
@@ -75,13 +77,13 @@ namespace cib
       {
         // failed to check LOL
         // can't measure. print error and return
-        printf("Failed to measure register status. Returned %X\n",ret);
+        SPDLOG_LOGGER_ERROR(m_log,"Failed to measure register status. Returned {:X}",ret);
         return ret;
       }
 
       if (reg.lol_status)
       {
-        printf("CDR chip in LOL state.\n");
+        SPDLOG_LOGGER_ERROR(m_log,"CDR chip in LOL state.");
         return CIB_I2C_ErrorDeviceInvalidState;
       }
 
@@ -95,14 +97,14 @@ namespace cib
       ret = read_register(0x3,tmp);
       if (ret != CIB_I2C_OK)
       {
-        printf("Error reading register\n");
+        SPDLOG_LOGGER_ERROR(m_log,"Error reading register");
         return ret;
       }
       rate = tmp;
       ret = read_register(0x4,tmp);
       if (ret != CIB_I2C_OK)
       {
-        printf("Error reading register\n");
+        SPDLOG_LOGGER_ERROR(m_log,"Error reading register");
         return ret;
       }
       // shift the existing value
@@ -209,7 +211,7 @@ namespace cib
       int ret = write_register(0x9,reg.get_u8(),0x80);
       if (ret != CIB_I2C_OK)
       {
-        printf("Failed to set LOL operation to %u\n",static_cast<uint32_t>(st));
+        SPDLOG_LOGGER_ERROR(m_log,"Failed to set LOL operation to {0}",static_cast<uint32_t>(st));
       }
     }
     void ADN2814::set_output_boost(bool boost)
@@ -224,7 +226,7 @@ namespace cib
       int ret = write_register(0x11,reg.get_u8(),0x1);
       if (ret != CIB_I2C_OK)
       {
-        printf("Failed to set LOL operation to %u\n",static_cast<uint32_t>(boost));
+        SPDLOG_LOGGER_ERROR(m_log,"Failed to set LOL operation to {0}",static_cast<uint32_t>(boost));
       }
     }
     void ADN2814::set_squelch_mode(SQUELCH mode)
@@ -239,7 +241,7 @@ namespace cib
       int ret = write_register(0x11,reg.get_u8(),0x2);
       if (ret != CIB_I2C_OK)
       {
-        printf("Failed to set SQUELCH to %u\n",static_cast<uint32_t>(mode));
+        SPDLOG_LOGGER_ERROR(m_log,"Failed to set SQUELCH to {0}",static_cast<uint32_t>(mode));
       }
     }
     void ADN2814::set_config_los(LOSPOL mode)
@@ -254,7 +256,7 @@ namespace cib
       int ret = write_register(0x11,reg.get_u8(),0x4);
       if (ret != CIB_I2C_OK)
       {
-        printf("Failed to set LOS config to %u\n",static_cast<uint32_t>(mode));
+        SPDLOG_LOGGER_ERROR(m_log,"Failed to set LOS config to {0}",static_cast<uint32_t>(mode));
       }
     }
 
