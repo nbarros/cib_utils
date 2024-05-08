@@ -7,3 +7,7 @@
 	url = https://github.com/gabime/spdlog.git
 [submodule "config/spdlog"]
 	shallow = true
+[submodule "contrib/cppzmq"]
+	path = contrib/cppzmq
+	url = https://github.com/zeromq/cppzmq.git
+	shallow = true
