@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <sys/mman.h>
 #include <bitset>
+#include <spdlog/spdlog.h>
 
 extern "C"
 {
@@ -57,12 +58,14 @@ namespace cib
 
     uint32_t reg_read(uintptr_t addr)
     {
+      spdlog::trace("Reading register 0x{0:X}",addr);
       return *(volatile uintptr_t*) addr;
       //*static_cast<volatile uint32_t*>(cast_to_void())
     }
 
     void reg_write(uintptr_t addr, uint32_t value)
     {
+      spdlog::trace("reg_write: Writing 0x{1:X} register 0x{0:X}",addr,value);
       *(volatile uint32_t*) addr = value;
     }
 
@@ -86,6 +89,7 @@ namespace cib
     void reg_write_mask(uintptr_t addr, uint32_t value, uint32_t mask)
     {
       uint32_t cache = reg_read(addr);
+      spdlog::trace("reg_write_mask: Writing to register 0x{0:X} (0x{1:X} | 0x{2:X})",addr,value,mask);
       reg_write(addr,((cache & ~mask) | (value & mask)));
     }
 
@@ -94,6 +98,7 @@ namespace cib
       uint32_t cache = reg_read(addr);
       // now shift the value into the relevant bits
       uint32_t v = (value << offset);
+      spdlog::trace("reg_write_mask_offset: Writing to register 0x{0:X} (0x{1:X} | 0x{2:X})",addr,v,mask);
       reg_write(addr,((cache & ~mask) | (v & mask)));
     }
 
