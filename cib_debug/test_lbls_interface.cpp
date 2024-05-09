@@ -24,8 +24,15 @@ extern "C"
   #include <fcntl.h>              // Flags for open()
   #include <sys/ioctl.h>
   #include <inttypes.h>
-
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 }
+
+#define VIRTUAL_MODE 1
+#define LBLS_SRV "194.12.167.238"
+#define LBLS_PORT 9001
 
 // reg 0 ised for reset
 #define CONF_MEM_LOW   0x00A0040000
@@ -39,20 +46,104 @@ volatile std::atomic<bool> run;
 void lbls_task(int fifo_fd)
 {
   spdlog::info("Starting LBLS data streaming thread");
-  ssize_t rx_bytes;
-  int packets_rx;
+  ssize_t rx_bytes = 0;
+  int packets_tx = 0;
+  int packets_rx = 0;
   // buffer of received data
   uint8_t buf[256];
-  uint64_t ts;
+  uint64_t ts = 0;
 
+  int n;
+  socklen_t len;
+
+#ifdef VIRTUAL_MODE
+  // UDP socket thingy
+
+  int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  if(sockfd <0 )
+  {
+    spdlog::error("Invalid socket");
+    return;
+  }
+
+  sockaddr_in addr;
+  addr.sin_addr.s_addr = inet_addr(LBLS_SRV);
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(LBLS_PORT);
+
+  len = sizeof(addr);
+
+  int result = connect(sockfd, (sockaddr*)&addr, sizeof(addr));
+  if(result < 0 )
+  {
+    spdlog::error("Socket error");
+    return;
+  }
+
+  // now start working
+  while(run.load())
+  {
+    ts++;
+    //result = send(sockfd, (char*)&ts, sizeof(ts), 0);
+    result = sendto(sockfd, (const char *)&ts, sizeof(ts),0,(const struct sockaddr *) &addr, len);
+    //        MSG_CONFIRM, (const struct sockaddr *) &addr, len);
+    if(result < 0)
+    {
+      spdlog::error("Socket error at packet {}",packets_tx);
+      return;
+    }
+    else
+    {
+      spdlog::trace("Got result {0}",result);
+    }
+    packets_tx++;
+
+    /** Alternative code. Not tested!!!
+     *
+       socklen_t len;
+
+      sendto(sockfd, (const char *)hello, strlen(hello),
+        MSG_CONFIRM, (const struct sockaddr *) &addr,
+            sizeof(addr));
+     *
+     */
+
+
+    /* To receive a reply
+     len = sizeof(addr);  //len is value/result
+
+    n = recvfrom(sockfd, (char *)buffer, MAXLINE,
+                   MSG_WAITALL, (struct sockaddr *) &servaddr,
+                   &len);
+       buffer[n] = '\0';
+       std::cout<<"Server :"<<buffer<<std::endl;
+    rx_bytes += n;
+     */
+  }
+  spdlog::info("Terminating.Closing socket.");
+  spdlog::info("Network statistics: packets_tx {0} bytes_tx {1} packets_rx {2} bytes_rx {3}",packets_tx,sizeof(ts)*packets_tx,packets_rx,rx_bytes);
+
+  close(sockfd);
+
+
+
+#else
   spdlog::info("Setting up the socket");
   zmq::context_t context;
-  zmq::socket_t socket(context, ZMQ_REP);
+  zmq::socket_t socket(context, ZMQ_REQ);
   spdlog::debug("Setting up zmq client");
 
   //
   while(run.load())
   {
+    zmq::message_t msg(sizeof(uint64_t));
+    std::memcpy((void*)msg.data(), &buf, sizeof(uint64_t));
+    socket.send(msg,zmq::send_flags::none);
+    // sleep for a few ms to give time to receive a reply
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    //zmq::message_t reply;
+    //socket.recv(reply,zmq::recv_flags::none);
+
     // grab something from the FIFO
     rx_bytes = read(fifo_fd,buf,256);
     if (rx_bytes > 0)
@@ -80,6 +171,8 @@ void lbls_task(int fifo_fd)
   // terminate the socket and the context
   socket.close();
   context.close();
+#endif
+
 }
 
 int configure(uintptr_t &addr)
@@ -142,6 +235,7 @@ int main(int argc, char** argv)
   spdlog::debug("Just testing a debug");
   int fifo_fd;
 
+#if !defined(VIRTUAL_MODE)
   spdlog::info("Mapping configuration module");
   int memfd = 0;
   uintptr_t vmem_conf = cib::util::map_phys_mem(memfd,CONF_MEM_LOW,CONF_MEM_HIGH);
@@ -174,6 +268,12 @@ int main(int argc, char** argv)
   std::this_thread::sleep_for(std::chrono::seconds(30));
 
   cib::util::reg_write_mask_offset(vmem_conf,0,(1<<27),27);
+
+#endif
+
+  spdlog::info("Initiating the readout thread");
+  std::thread lbls(lbls_task,fifo_fd);
+  std::this_thread::sleep_for(std::chrono::seconds(30));
 
   spdlog::warn("Stopping the thread");
   run.store(false);
