@@ -22,15 +22,14 @@
 // reg 0 ised for reset
 #define CONF_MEM_LOW   0xA0040000
 #define CONF_MEM_HIGH  0xA004FFFF
-
+#define CONF_CH_OFFSET 0x4
 #define GPIO_MEM_LOW   0xA0010000
 #define GPIO_MEM_HIGH  0xA001FFFF
 
 #define GPIO2_MEM_LOW   0xA0020000
 #define GPIO2_MEM_HIGH  0xA002FFFF
 
-
-#define CH_OFFSET      0x8
+#define GPIO_CH_OFFSET      0x8
 
 volatile std::atomic<bool> run;
 
@@ -40,7 +39,7 @@ int test_read_write(uintptr_t &addr_io, uintptr_t &addr_i)
   spdlog::debug("Reading register for 5 s");
   for (size_t i = 0; i < 10; i++)
   {
-    uint32_t val = cib::util::reg_read(addr_io+0*CH_OFFSET);
+    uint32_t val = cib::util::reg_read(addr_io+0*GPIO_CH_OFFSET);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
@@ -49,10 +48,10 @@ int test_read_write(uintptr_t &addr_io, uintptr_t &addr_i)
   spdlog::debug("Writing to register of CH1 once");
   uint32_t val_write = 0xACDC0F;
   spdlog::trace("Writing value 0x{0:X}",val_write);
-  cib::util::reg_write(addr_io+(1*CH_OFFSET), val_write);
+  cib::util::reg_write(addr_io+(1*GPIO_CH_OFFSET), val_write);
   spdlog::debug("Reading on second GPIO the loopback value");
 
-  uint32_t val_readback = cib::util::reg_read(addr_i+(0*CH_OFFSET));
+  uint32_t val_readback = cib::util::reg_read(addr_i+(0*GPIO_CH_OFFSET));
   spdlog::trace("Read back 0x{0:X}",val_readback);
   if (val_readback != val_write)
   {
@@ -62,6 +61,38 @@ int test_read_write(uintptr_t &addr_io, uintptr_t &addr_i)
   spdlog::info("All tests were successful");
   return 0;
 }
+
+// implement soeme extra commands
+int set_motor_init_position(uintptr_t addr, uint32_t m1, uint32_t m2, uint32_t m3)
+{
+  spdlog::info("Setting initial position to [RNN800, RNN600, LSTAGE] = ({0}, {1}, {2})",m1,m2,m3);
+  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*1),0,((1<<21)-1));
+  std::this_thread::sleep_for(std::chrono::microseconds(10));
+  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*2),0,((1<<21)-1));
+  std::this_thread::sleep_for(std::chrono::microseconds(10));
+  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*3),0,((1<<21)-1));
+  std::this_thread::sleep_for(std::chrono::microseconds(10));
+
+
+  // read the register back to be sure
+  spdlog::info("Position set (readback [{},{},{}])",
+               cib::util::reg_read(addr+(CONF_CH_OFFSET*1)),
+               cib::util::reg_read(addr+(CONF_CH_OFFSET*2)),
+               cib::util::reg_read(addr+(CONF_CH_OFFSET*3)));
+  return 0;
+}
+
+int get_motor_init_position(uintptr_t addr)
+{
+  spdlog::info("Getting initial movement position from motors");
+  spdlog::info("Position [RNN800, RNN600, LSTAGE] = [{},{},{}]",
+               cib::util::reg_read(addr+(CONF_CH_OFFSET*1)),
+               cib::util::reg_read(addr+(CONF_CH_OFFSET*2)),
+               cib::util::reg_read(addr+(CONF_CH_OFFSET*3)));
+   return 0;
+}
+
+
 
 int main(int argc, char** argv)
 {
