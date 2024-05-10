@@ -23,6 +23,7 @@
 #define CONF_MEM_LOW   0xA0040000
 #define CONF_MEM_HIGH  0xA004FFFF
 #define CONF_CH_OFFSET 0x4
+
 #define GPIO_MEM_LOW   0xA0010000
 #define GPIO_MEM_HIGH  0xA001FFFF
 
@@ -92,7 +93,65 @@ int get_motor_init_position(uintptr_t addr)
    return 0;
 }
 
+int run_command(uintptr_t &memaddr, int argc, char** argv)
+{
+  if (argc< 1)
+  {
+    return 1;
+  }
 
+  std::string cmd(argv[0]);
+  // check command request
+  if (cmd == "exit")
+  {
+    return 255;
+  }
+  else if (cmd == "reset_pdts")
+  {
+
+  }
+  else if (cmd == "set_motor_init")
+  {
+    if (argc != 4)
+    {
+      spdlog::warn("usage: set_motor_init pi1 pi2 pi3");
+      return 0;
+    }
+    int32_t pi1 = std::strtoul(argv[1],NULL,0);
+    int32_t pi2 = std::strtoul(argv[2],NULL,0);
+    int32_t pi3 = std::strtoul(argv[3],NULL,0);
+    spdlog::debug("Setting motor init position to [RNN800,RNN600,LSTAGE] = [{0},{1},{2}]",pi1,pi2,pi3);
+    int res = set_motor_init_position(memaddr,pi1,pi2,pi3);
+    if (res != 0)
+    {
+      spdlog::error("An unknown error was found");
+      return 0;
+    }
+    spdlog::debug("Position set successfully!");
+    return 0;
+  }
+  else if(cmd == "get_motor_init")
+  {
+
+  }
+  else if (cmd == "set_laser_fire_width")
+  {
+
+  }
+  else if (cmd == "set_laser_fire_width")
+  {
+
+  }
+  else if (cmd == "set_laser_fire_period")
+  {
+
+  }
+  else if (cmd == "fire_enable")
+  {
+
+  }
+
+}
 
 int main(int argc, char** argv)
 {

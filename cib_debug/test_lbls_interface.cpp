@@ -30,7 +30,8 @@ extern "C"
 #include <netinet/in.h>
 }
 
-#define VIRTUAL_MODE 1
+//#define VIRTUAL_MODE 1
+#undef VIRTUAL_MODE
 #define LBLS_SRV "194.12.167.238"
 #define LBLS_PORT 9001
 
@@ -154,11 +155,13 @@ void lbls_task(int fifo_fd)
       packets_rx++;
       zmq::message_t msg(sizeof(uint64_t));
       std::memcpy((void*)msg.data(), &buf, sizeof(uint64_t));
+      spdlog::trace("Sending {0}",ts);
       socket.send(msg,zmq::send_flags::none);
 
       // sleep for a few ms to give time to receive a reply
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
       zmq::message_t reply;
+      spdlog::trace("Waiting for reply");
       socket.recv(reply,zmq::recv_flags::none);
 
       std::string reply_str(static_cast<char*>(reply.data()), reply.size());
@@ -185,10 +188,15 @@ int configure(uintptr_t &addr)
   int reg = 1;
   const uint32_t reg_size = 0x4; // 4 bytes per register
   // set initial position to 0
-  cib::util::reg_write_mask(addr+(reg_size*1),0,((1<<21)-1));
-  cib::util::reg_write_mask(addr+(reg_size*2),0,((1<<21)-1));
-  cib::util::reg_write_mask(addr+(reg_size*3),0,((1<<21)-1));
+  spdlog::debug("Setting motor initial position to 0");
+//  cib::util::reg_write_mask(addr+(reg_size*1),0,((1<<21)-1));
+//  cib::util::reg_write_mask(addr+(reg_size*2),0,((1<<21)-1));
+//  cib::util::reg_write_mask(addr+(reg_size*3),0,((1<<21)-1));
+  cib::util::reg_write(addr+(reg_size*1),0);
+  cib::util::reg_write(addr+(reg_size*2),0);
+  cib::util::reg_write(addr+(reg_size*3),0);
 
+  spdlog::debug("Configuring the laser for standard settings");
   // set fire pulse width to 10 us = 625 clock cycles (62.5 MHz)
   cib::util::reg_write_mask(addr+(reg_size*10),625,((1<<12)-1));
   // set pulse period 100 ms = 6250000 clock cycles (62.5 MHz)
@@ -196,17 +204,21 @@ int configure(uintptr_t &addr)
   // set QS pulse width to 10 us = 625 clock cycles (62.5 MHz)
   cib::util::reg_write_mask_offset(addr+(reg_size*10),625,((1<<12)-1) << 12,12);
   // set QS delay width to 160 us = 10000 clock cycles (62.5 MHz)
-  cib::util::reg_write_mask(addr+(reg_size*11),10000,((1<<15)-1));
+  //cib::util::reg_write_mask(addr+(reg_size*11),10000,((1<<15)-1));
+  cib::util::reg_write(addr+(reg_size*11),10000);
 
+  spdlog::debug("Enabling the LBLS trigger width to 1");
   // set the lbls trigger to width 1
-  cib::util::reg_write_mask(addr+(reg_size*14),1,((1<<8)-1));
+  cib::util::reg_write_mask(addr+(reg_size*14),2,((1<<8)-1));
 
+  spdlog::debug("Setting the pulser to 10 Hz");
   // set the calib pulser to 10 Hz
   // set the same properties as the fire signal
   // set pulse period 100 ms = 6250000 clock cycles (62.5 MHz)
   cib::util::reg_write_mask(addr+(reg_size*16),6250000,((1<<24)-1));
   // set fire pulse width to 10 us = 625 clock cycles (62.5 MHz)
-  cib::util::reg_write_mask(addr+(reg_size*17),625,((1<<16)-1));
+  //cib::util::reg_write_mask(addr+(reg_size*17),625,((1<<16)-1));
+  cib::util::reg_write(addr+(reg_size*17),625);
 
   spdlog::info("Starting to enable stuff");
 
@@ -266,14 +278,16 @@ int main(int argc, char** argv)
   cib::util::reg_write_mask_offset(vmem_conf,1,(1<<27),27);
 
   std::this_thread::sleep_for(std::chrono::seconds(30));
+  spdlog::debug("Disabling the LBLS trigger");
 
   cib::util::reg_write_mask_offset(vmem_conf,0,(1<<27),27);
 
-#endif
+#else
 
   spdlog::info("Initiating the readout thread");
   std::thread lbls(lbls_task,fifo_fd);
   std::this_thread::sleep_for(std::chrono::seconds(30));
+#endif
 
   spdlog::warn("Stopping the thread");
   run.store(false);

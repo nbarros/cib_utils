@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstddef>
+#include <thread>
+#include <chrono>
 #include <sys/mman.h>
 #include <bitset>
 #include <spdlog/spdlog.h>
@@ -59,6 +61,7 @@ namespace cib
     uint32_t reg_read(uintptr_t addr)
     {
       spdlog::trace("Reading register 0x{0:X}",addr);
+      std::this_thread::sleep_for(std::chrono::microseconds(10));
       return *(volatile uintptr_t*) addr;
       //*static_cast<volatile uint32_t*>(cast_to_void())
     }
@@ -66,6 +69,7 @@ namespace cib
     void reg_write(uintptr_t addr, uint32_t value)
     {
       spdlog::trace("reg_write: Writing 0x{1:X} register 0x{0:X}",addr,value);
+      std::this_thread::sleep_for(std::chrono::microseconds(10));
       *(volatile uint32_t*) addr = value;
     }
 
