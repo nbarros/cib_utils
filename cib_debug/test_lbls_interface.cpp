@@ -189,9 +189,9 @@ int configure(uintptr_t &addr)
   const uint32_t reg_size = 0x4; // 4 bytes per register
   // set initial position to 0
   spdlog::debug("Setting motor initial position to 0");
-//  cib::util::reg_write_mask(addr+(reg_size*1),0,((1<<21)-1));
-//  cib::util::reg_write_mask(addr+(reg_size*2),0,((1<<21)-1));
-//  cib::util::reg_write_mask(addr+(reg_size*3),0,((1<<21)-1));
+  //  cib::util::reg_write_mask(addr+(reg_size*1),0,((1<<21)-1));
+  //  cib::util::reg_write_mask(addr+(reg_size*2),0,((1<<21)-1));
+  //  cib::util::reg_write_mask(addr+(reg_size*3),0,((1<<21)-1));
   cib::util::reg_write(addr+(reg_size*1),0);
   cib::util::reg_write(addr+(reg_size*2),0);
   cib::util::reg_write(addr+(reg_size*3),0);
