@@ -20,10 +20,10 @@
 
 extern "C"
 {
-  #include <unistd.h>           // Close() system call
-  #include <fcntl.h>              // Flags for open()
-  #include <sys/ioctl.h>
-  #include <inttypes.h>
+#include <unistd.h>           // Close() system call
+#include <fcntl.h>              // Flags for open()
+#include <sys/ioctl.h>
+#include <inttypes.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -32,7 +32,7 @@ extern "C"
 
 //#define VIRTUAL_MODE 1
 #undef VIRTUAL_MODE
-#define LBLS_SRV "194.12.167.238"
+#define LBLS_SRV "10.73.137.151"
 #define LBLS_PORT 9001
 
 // reg 0 ised for reset
@@ -133,41 +133,52 @@ void lbls_task(int fifo_fd)
   zmq::context_t context;
   zmq::socket_t socket(context, ZMQ_REQ);
   spdlog::debug("Setting up zmq client");
+  char *addr;
+  int llen = asprintf(&addr,"tcp://%s:%u",LBLS_SRV,LBLS_PORT);
+  if (llen < 0)
+  {
+    spdlog::critical("Failed to set address {}:{}",LBLS_SRV,LBLS_PORT);
+  }
 
+  spdlog::info("Connecting to {}",addr);
+
+  socket.connect (addr);
+  free(addr);
   //
   while(run.load())
   {
-    zmq::message_t msg(sizeof(uint64_t));
-    std::memcpy((void*)msg.data(), &buf, sizeof(uint64_t));
-    socket.send(msg,zmq::send_flags::none);
-    // sleep for a few ms to give time to receive a reply
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    //    zmq::message_t msg(sizeof(uint64_t));
+    //    std::memcpy((void*)msg.data(), &buf, sizeof(uint64_t));
+    //    socket.send(msg,zmq::send_flags::none);
+    //    // sleep for a few ms to give time to receive a reply
+    //    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     //zmq::message_t reply;
     //socket.recv(reply,zmq::recv_flags::none);
 
     // grab something from the FIFO
-    rx_bytes = read(fifo_fd,buf,256);
-    if (rx_bytes > 0)
-    {
-      // we have good data, send it
-      spdlog::trace("Received {0} bytes",rx_bytes);
-      ts = *reinterpret_cast<uint64_t*>(&buf);;
-      packets_rx++;
-      zmq::message_t msg(sizeof(uint64_t));
-      std::memcpy((void*)msg.data(), &buf, sizeof(uint64_t));
-      spdlog::trace("Sending {0}",ts);
-      socket.send(msg,zmq::send_flags::none);
+    //    rx_bytes = read(fifo_fd,buf,256);
+    //    if (rx_bytes > 0)
+    //    {
+    //      // we have good data, send it
+    //      spdlog::trace("Received {0} bytes",rx_bytes);
+    //      ts = *reinterpret_cast<uint64_t*>(&buf);;
+    ts += 1;
+    packets_rx++;
+    zmq::message_t msg(sizeof(uint64_t));
+    //std::memcpy((void*)msg.data(), &buf, sizeof(uint64_t));
+    std::memcpy((void*)msg.data(),(const char*)&ts,sizeof(uint64_t));
+    spdlog::trace("Sending {0}",ts);
+    socket.send(msg,zmq::send_flags::none);
 
-      // sleep for a few ms to give time to receive a reply
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      zmq::message_t reply;
-      spdlog::trace("Waiting for reply");
-      socket.recv(reply,zmq::recv_flags::none);
+    // sleep for a few ms to give time to receive a reply
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    zmq::message_t reply;
+    spdlog::trace("Waiting for reply");
+    socket.recv(reply,zmq::recv_flags::none);
 
-      std::string reply_str(static_cast<char*>(reply.data()), reply.size());
-      spdlog::debug("Received a response with {0} bytes",reply.size());
-
-    }
+    std::string reply_str(static_cast<char*>(reply.data()), reply.size());
+    spdlog::debug("Received a response with {0} bytes",reply.size());
+    // }
     // no data is available
   }
   spdlog::info("Left the loop. Thread will terminate");
