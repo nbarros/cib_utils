@@ -52,6 +52,18 @@ int set_align_laser_settings(uintptr_t &addr, const uint32_t width, const uint32
 int get_align_laser_state(uintptr_t &addr);
 int set_align_laser_state(uintptr_t &addr, uint32_t state);
 int get_laser_settings(uintptr_t &addr);
+int set_laser_fire_state(uintptr_t &addr, uint32_t state);
+int set_laser_qswitch_state(uintptr_t &addr, uint32_t state);
+int set_laser_fire(uintptr_t &addr, const uint32_t width, const uint32_t period);
+int set_laser_qswitch(uintptr_t &addr, const uint32_t width, const uint32_t delay);
+int set_laser_settings(uintptr_t &addr,
+                       uint32_t fire_state, uint32_t fire_width,
+                       uint32_t qs_state,  uint32_t qs_width, uint32_t qs_delay, uint32_t fire_period);
+
+int run_command(uintptr_t &memaddr, int argc, char** argv);
+void print_help();
+
+
 
 int test_read_write(uintptr_t &addr_io, uintptr_t &addr_i)
 {
@@ -339,6 +351,11 @@ int run_command(uintptr_t &memaddr, int argc, char** argv)
   {
     return 255;
   }
+  else if (cmd == "help")
+  {
+    print_help();
+    return 0;
+  }
   else if (cmd == "reset_pdts")
   {
     int res = reset_pdts(memaddr);
@@ -386,7 +403,7 @@ int run_command(uintptr_t &memaddr, int argc, char** argv)
     }
     else if (argc !=3)
     {
-      spdlog::warn("usage: align_laser_state  width period (in 16 ns units)");
+      spdlog::warn("usage: align_laser  width period (in 16 ns units)");
       return 0;
     }
     else
@@ -402,7 +419,7 @@ int run_command(uintptr_t &memaddr, int argc, char** argv)
     }
     return 0;
   }
-  else if (cmd == "align_state")
+  else if (cmd == "align_enable")
   {
     int res = 0;
     if (argc == 1)
@@ -624,7 +641,15 @@ void print_help()
   spdlog::info("  pdts");
   spdlog::info("    Gets the current state of the PDTS system");
   spdlog::info("  lbls [state width]");
-  spdlog::info("    Set the Set the DAC level of channel <ch> to <value>.If <ch> = 3, both channels are set");
+  spdlog::info("    Configure the LBLS trigger");
+  spdlog::info("  align_laser [width period]");
+  spdlog::info("    Config alignment laser");
+  spdlog::info("  align_enable [state]");
+  spdlog::info("    Enable/disable alignment laser");
+  spdlog::info("  motor_init [pi_1 pi_2 pi_3]");
+  spdlog::info("    Config the initial position of the motor (in the FPGA)");
+  spdlog::info("  laser_config [laser_config fire_state fire_width [fire_period] qs_state qs_width qs_delay]");
+  spdlog::info("    Configure the laser system in a single command. WARNING: Careful setting the fire_period");
   spdlog::info("  fire_enable [state]");
   spdlog::info("    Enable/disable laser FIRE ");
   spdlog::info("  fire_config [state width [period]]");
@@ -634,8 +659,12 @@ void print_help()
   spdlog::info("    Enable/disable laser QSWITCH ");
   spdlog::info("  qswitch_config [state width delay]");
   spdlog::info("    Configures the QSWITCH part of the laser");
+  spdlog::info("  help");
+  spdlog::info("    Print this help");
   spdlog::info("  exit");
   spdlog::info("    Closes the command interface");
+  spdlog::info("");
+  spdlog::info("Note: widths, periods and delays are all in 16 ns units. States are 1 or 0");
 
 }
 
@@ -685,6 +714,7 @@ int main(int argc, char** argv)
     spdlog::critical("Something failed on memory mapped register control");
     return 0;
   }
+  print_help();
 
   // -- now start the real work
   char* buf;
