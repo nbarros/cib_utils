@@ -30,14 +30,12 @@ extern "C"
 #include <netinet/in.h>
 }
 
+#include <cib_mem.h>
+
 //#define VIRTUAL_MODE 1
 #undef VIRTUAL_MODE
 #define LBLS_SRV "10.73.137.151"
 #define LBLS_PORT 9001
-
-// reg 0 ised for reset
-#define CONF_MEM_LOW   0x00A0040000
-#define CONF_MEM_HIGH  0x00A004FFFF
 
 
 volatile std::atomic<bool> run;

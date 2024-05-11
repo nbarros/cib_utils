@@ -8,6 +8,21 @@
 #include <thread>
 #include <chrono>
 
+
+///
+///
+///
+///
+///
+///  NOTE: This application is no longer working
+///
+///
+///
+///
+///
+///
+
+
 // reg 0 ised for reset
 #define GPIO1_MEM_LOW   0x00A0010000
 #define GPIO1_MEM_HIGH  0x00A001FFFF

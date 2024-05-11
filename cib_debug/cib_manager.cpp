@@ -23,18 +23,7 @@ extern "C"
 #include <readline/readline.h>
 #include <readline/history.h>
 }
-// reg 0 ised for reset
-#define CONF_MEM_LOW   0xA0040000
-#define CONF_MEM_HIGH  0xA004FFFF
-#define CONF_CH_OFFSET 0x4
-
-#define GPIO_MEM_LOW   0xA0010000
-#define GPIO_MEM_HIGH  0xA001FFFF
-
-#define GPIO2_MEM_LOW   0xA0020000
-#define GPIO2_MEM_HIGH  0xA002FFFF
-
-#define GPIO_CH_OFFSET      0x8
+#include <cib_mem.h>
 
 volatile std::atomic<bool> run;
 
@@ -690,7 +679,7 @@ int main(int argc, char** argv)
   }
 
   spdlog::info("Mapping GPIO_IO_0");
-  uintptr_t vmem_gpio = cib::util::map_phys_mem(memfd,GPIO_MEM_LOW,GPIO_MEM_HIGH);
+  uintptr_t vmem_gpio = cib::util::map_phys_mem(memfd,GPIO_IO_MEM_LOW,GPIO_IO_MEM_HIGH);
   spdlog::debug("\nGot virtual address [0x{:X}]",vmem_gpio);
   if (vmem_gpio == 0x0)
   {
@@ -699,7 +688,7 @@ int main(int argc, char** argv)
   }
 
   spdlog::info("Mapping GPIO_I_0");
-  uintptr_t vmem_gpio2 = cib::util::map_phys_mem(memfd,GPIO2_MEM_LOW,GPIO2_MEM_HIGH);
+  uintptr_t vmem_gpio2 = cib::util::map_phys_mem(memfd,GPIO_I_0_MEM_LOW,GPIO_I_0_MEM_HIGH);
   spdlog::debug("\nGot virtual address [0x{:X}]",vmem_gpio2);
   if (vmem_gpio2 == 0x0)
   {
