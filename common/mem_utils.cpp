@@ -93,7 +93,8 @@ namespace cib
     void reg_write_mask(uintptr_t addr, uint32_t value, uint32_t mask)
     {
       uint32_t cache = reg_read(addr);
-      spdlog::trace("reg_write_mask: Writing to register 0x{0:X} (0x{1:X} | 0x{2:X})",addr,value,mask);
+      spdlog::trace("reg_write_mask: Cache reg value 0x{0:X} (0x{1:X} | 0x{2:X})",addr,value,mask);
+      spdlog::trace("reg_write_mask: Writing to register 0x{0:X} (v: 0x{1:X} | m: 0x{2:X})",addr,value,mask);
       reg_write(addr,((cache & ~mask) | (value & mask)));
     }
 
