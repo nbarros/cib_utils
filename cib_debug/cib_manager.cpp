@@ -634,6 +634,7 @@ int run_command(uintptr_t &memaddr, int argc, char** argv)
     int res = 0;
     if (argc == 1)
     {
+      spdlog::debug("Querying the pdts status");
       res = pdts_get_status(memaddr);
       if (res != 0)
       {
@@ -642,8 +643,8 @@ int run_command(uintptr_t &memaddr, int argc, char** argv)
     }
     else if (argc == 3)
     {
-      spdlog::debug("Got the following args {0} {1} {2}",argv[0],argv[1],argv[2]);
-      if (argv[1] == "addr")
+      spdlog::debug("Got the following args {0},{1},{2}",argv[0],argv[1],argv[2]);
+      if (std::string(argv[1]) == std::string("addr"))
       {
         uint16_t addr = std::strtol(argv[2],NULL,0);
         spdlog::info("Setting address to 0x{0:x}",addr);
