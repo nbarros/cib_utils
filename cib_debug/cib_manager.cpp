@@ -5,19 +5,18 @@
  *      Author: Nuno Barros
  */
 
-#include <bits/stdint-intn.h>
-#include <bits/stdint-uintn.h>
-#include <spdlog/common.h>
-#include <spdlog/spdlog.h>
-#include <spdlog/spdlog-inl.h>
-#include <stddef.h>
-#include <atomic>
-#include <chrono>
-#include <cstdint>
-#include <cstdlib>
-#include <cstring>
-#include <string>
 #include <thread>
+#include <cstdio>
+#include <cstdlib>
+#include <thread>
+#include <chrono>
+#include <csignal>
+#include <atomic>
+#include <spdlog/spdlog.h>
+#include <cerrno>
+#include <zmq.hpp>
+#include <string>
+#include <mem_utils.h>
 
 extern "C"
 {
