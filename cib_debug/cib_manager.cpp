@@ -642,6 +642,7 @@ int run_command(uintptr_t &memaddr, int argc, char** argv)
     }
     else if (argc == 3)
     {
+      spdlog::debug("Got the following args {0} {1} {2}",argv[0],argv[1],argv[2]);
       if (argv[1] == "addr")
       {
         uint16_t addr = std::strtol(argv[2],NULL,0);
@@ -649,12 +650,12 @@ int run_command(uintptr_t &memaddr, int argc, char** argv)
         res = pdts_set_addr(memaddr,addr);
         if (res != 0)
         {
-          spdlog::error("Failed to reset PDTS");
+          spdlog::error("Failed to set address");
         }
       }
       else
       {
-        spdlog::error("unknown subcommand [{0} {1}]",argv[1],argv[2]);
+        spdlog::error("unknown subcommand [|{0}| |{1}|]",argv[1],argv[2]);
       }
     }
     else
