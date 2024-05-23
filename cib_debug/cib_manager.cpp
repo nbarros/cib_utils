@@ -5,18 +5,19 @@
  *      Author: Nuno Barros
  */
 
-#include <thread>
-#include <cstdio>
-#include <cstdlib>
-#include <thread>
-#include <chrono>
-#include <csignal>
-#include <atomic>
+#include <bits/stdint-intn.h>
+#include <bits/stdint-uintn.h>
+#include <spdlog/common.h>
 #include <spdlog/spdlog.h>
-#include <cerrno>
-#include <zmq.hpp>
+#include <spdlog/spdlog-inl.h>
+#include <stddef.h>
+#include <atomic>
+#include <chrono>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <string>
-#include <mem_utils.h>
+#include <thread>
 
 extern "C"
 {
@@ -326,6 +327,34 @@ int set_laser_settings(uintptr_t &addr,
 }
 
 
+int pdts_get_status(uintptr_t &addr)
+{
+  uint32_t reg_val = cib::util::reg_read(addr+(CONF_CH_OFFSET*18));
+  spdlog::debug("Register value 0x{0:X} status 0x{1:X}",reg_val, (reg_val & 0xFF));
+  spdlog::info("PDTS STATUS : 0x{0:X}",(reg_val & 0xFF));
+
+  // this will likely failbecause of damn alignment
+  spdlog::trace("Checking pdts address");
+  reg_val = cib::util::reg_read(addr+(CONF_CH_OFFSET*13));
+  uint32_t mask = cib::util::bitmask(16,31);
+  spdlog::debug("Register value 0x{0:X} addr 0x{1:X}",reg_val, (reg_val & mask));
+
+
+  return 0;
+}
+
+int pdts_set_addr(uintptr_t &addr,uint16_t pdts_addr)
+{
+  spdlog::debug("Setting pdts address to 0x{0:X}",pdts_addr);
+  uint32_t mask = cib::util::bitmask(16,31);
+  //cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*13),pdts_addr,mask);
+  // alternative, for now
+  uint32_t val = pdts_addr;
+  val = val << 16;
+  cib::util::reg_write(addr+(CONF_CH_OFFSET*13),val);
+
+  return 0;
+}
 
 int run_command(uintptr_t &memaddr, int argc, char** argv)
 {
@@ -343,15 +372,6 @@ int run_command(uintptr_t &memaddr, int argc, char** argv)
   else if (cmd == "help")
   {
     print_help();
-    return 0;
-  }
-  else if (cmd == "reset_pdts")
-  {
-    int res = reset_pdts(memaddr);
-    if (res != 0)
-    {
-      spdlog::error("Failed to reset PDTS");
-    }
     return 0;
   }
   else if (cmd == "motor_init")
@@ -611,7 +631,51 @@ int run_command(uintptr_t &memaddr, int argc, char** argv)
   }
   else if (cmd == "pdts")
   {
-    spdlog::error("Not implemented yet");
+    int res = 0;
+    if (argc == 1)
+    {
+      res = pdts_get_status(memaddr);
+      if (res != 0)
+      {
+        spdlog::error("Failed to reset PDTS");
+      }
+    }
+    else if (argc == 3)
+    {
+      if (argv[1] == "addr")
+      {
+        uint16_t addr = std::strtol(argv[2],NULL,0);
+        spdlog::info("Setting address to 0x{0:x}",addr);
+        res = pdts_set_addr(memaddr,addr);
+        if (res != 0)
+        {
+          spdlog::error("Failed to reset PDTS");
+        }
+      }
+      else
+      {
+        spdlog::error("unknown subcommand [{0} {1}]",argv[1],argv[2]);
+      }
+    }
+    else
+    {
+      spdlog::warn("Usage: pdts [addr <addr>]");
+    }
+  //    int res = check_pdts(memaddr);
+  //    if (res != 0)
+  //    {
+  //      spdlog::error("Failed to reset PDTS");
+  //    }
+    return 0;
+  }
+  else if (cmd == "pdts_reset")
+  {
+    spdlog::info("Resetting the PDTS system");
+    int res = reset_pdts(memaddr);
+    if (res != 0)
+    {
+      spdlog::error("Failed to reset PDTS");
+    }
     return 0;
   }
   else
@@ -627,7 +691,7 @@ void print_help()
   spdlog::info("Available commands (note, commands without arguments print current settings):");
   spdlog::info("  reset_pdts");
   spdlog::info("    Resets the PDTS system");
-  spdlog::info("  pdts");
+  spdlog::info("  pdts [addr <addr>]");
   spdlog::info("    Gets the current state of the PDTS system");
   spdlog::info("  lbls [state width]");
   spdlog::info("    Configure the LBLS trigger");
