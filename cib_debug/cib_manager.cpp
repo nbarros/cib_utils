@@ -328,6 +328,7 @@ int set_laser_settings(uintptr_t &addr,
 
 int pdts_get_status(uintptr_t &addr)
 {
+  spdlog::debug("Reading address 0x{0:X}",addr+(CONF_CH_OFFSET*18));
   uint32_t reg_val = cib::util::reg_read(addr+(CONF_CH_OFFSET*18));
   spdlog::debug("Register value 0x{0:X} status 0x{1:X}",reg_val, (reg_val & 0xFF));
   spdlog::info("PDTS STATUS : 0x{0:X}",(reg_val & 0xFF));
