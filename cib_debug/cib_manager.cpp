@@ -649,7 +649,7 @@ int run_command(int argc, char** argv)
     }
     else if (argc !=3)
     {
-      spdlog::warn("usage: align_laser  width period (in 16 ns units)");
+      spdlog::warn("usage: align_laser width period (in 16 ns units)");
       return 0;
     }
     else
@@ -675,7 +675,7 @@ int run_command(int argc, char** argv)
     }
     else if (argc !=2)
     {
-      spdlog::warn("usage: align_state state (1: ON; 0: OFF)");
+      spdlog::warn("usage: align_enable state (1: ON; 0: OFF)");
       return 0;
     }
     else
@@ -942,6 +942,10 @@ int run_command(int argc, char** argv)
       {
         uint16_t level = (uint16_t) strtoul(argv[2], NULL, 0);
 
+        if (level > 4095)
+        {
+          spdlog::warn("Value out of range. Setting to max (0xFFF)");
+        }
         spdlog::info("Setting DAC to {0}",level);
         int ret = g_dac->set_level(cib::i2c::AD5339::CH_1,level);
         if (ret != CIB_I2C_OK)
@@ -991,7 +995,11 @@ int run_command(int argc, char** argv)
 void print_help()
 {
   spdlog::info("Available commands (note, commands without arguments print current settings):");
-  spdlog::info("  reset_pdts");
+  spdlog::info("  dac [subcmd [subcmd_args]]");
+  spdlog::info("    Operates the DAC. Available subcommands:");
+  spdlog::info("      set <dac_level> (value between 0 and 4095)");
+  spdlog::info("      clear");
+  spdlog::info("  pdts_reset");
   spdlog::info("    Resets the PDTS system");
   spdlog::info("  pdts [addr <addr>]");
   spdlog::info("    Gets the current state of the PDTS system");
@@ -1007,12 +1015,12 @@ void print_help()
   spdlog::info("    Configure the laser system in a single command. WARNING: Careful setting the fire_period");
   spdlog::info("  fire_enable [state]");
   spdlog::info("    Enable/disable laser FIRE ");
-  spdlog::info("  fire_config [state width [period]]");
+  spdlog::info("  fire_config [width [period]]");
   spdlog::info("    Configures the FIRE part of the laser");
   spdlog::info("    WARNING: Do not edit the period, unless you know what you are doing");
   spdlog::info("  qswitch_enable [state]");
   spdlog::info("    Enable/disable laser QSWITCH ");
-  spdlog::info("  qswitch_config [state width delay]");
+  spdlog::info("  qswitch_config [width delay]");
   spdlog::info("    Configures the QSWITCH part of the laser");
   spdlog::info("  help");
   spdlog::info("    Print this help");

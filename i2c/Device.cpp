@@ -79,8 +79,11 @@ namespace cib
     ,m_bus_num(-1)
     ,m_dev_addr(-1)
     ,m_dev_funcs(0)
+#ifdef I2C_PRINT
     ,m_log(nullptr)
+#endif
     {
+#ifdef I2C_PRINT
       m_log = spdlog::get("cib_i2c");
       if (m_log == nullptr)
       {
@@ -91,7 +94,7 @@ namespace cib
         SPDLOG_LOGGER_INFO(m_log,"Created new logger for cib_i2c");
 
       }
-
+#endif
     }
 
     Device::~Device ()
@@ -114,9 +117,13 @@ namespace cib
       {
         return CIB_I2C_DeviceInUse;
       }
+#ifdef I2C_PRINT
       SPDLOG_LOGGER_TRACE(m_log,"Received bus {}",bus);
+#endif
       m_device = "/dev/i2c-" + std::to_string (bus);
+#ifdef I2C_PRINT
       SPDLOG_LOGGER_TRACE(m_log,"Bus set to [{0}]",m_device.c_str());
+#endif
       m_bus_num = bus;
       return CIB_I2C_OK;
     }
@@ -135,7 +142,9 @@ namespace cib
 
       if ((m_bus_num < 0) || (m_dev_addr < 0))
       {
+#ifdef I2C_PRINT
         SPDLOG_LOGGER_TRACE(m_log,"Device not ready to open [bus {0}, dev 0x{1:x}]",m_bus_num,m_dev_addr);
+#endif
         return CIB_I2C_ErrorDeviceConfig;
       }
       // if the device is already open, do nothing
@@ -144,11 +153,15 @@ namespace cib
         return CIB_I2C_OK;
       }
       // open the device
+#ifdef I2C_PRINT
       SPDLOG_LOGGER_DEBUG(m_log,"Opening device [{0}]",m_device.c_str());
+#endif
       m_fd = open(m_device.c_str(),O_RDWR);
       if (m_fd < 0)
       {
+#ifdef I2C_PRINT
         SPDLOG_LOGGER_ERROR(m_log,"Failed to open device bus: [{0} : {1}]",errno,std::strerror(errno));
+#endif
         return CIB_I2C_ErrorOpenDevice;
       }
       m_is_open = true;
@@ -159,6 +172,7 @@ namespace cib
         return ret;
       }
       // populate the functionality array
+#ifdef I2C_PRINT
       if (ioctl(m_fd, I2C_FUNCS, &m_dev_funcs) < 0)
       {
         SPDLOG_LOGGER_WARN(m_log,"Couldn't query device functionlity [{0} : {1}]",errno,std::strerror(errno));
@@ -167,17 +181,23 @@ namespace cib
       {
         SPDLOG_LOGGER_INFO(m_log,"Device functionality : [{0}] [{1}]",m_dev_funcs,u64_to_binary(m_dev_funcs));
       }
-
+#else
+      ioctl(m_fd, I2C_FUNCS, &m_dev_funcs);
+#endif
       return CIB_I2C_OK;
     }
     int Device::close_device()
     {
       if (m_is_open)
       {
+#ifdef I2C_PRINT
         if (close(m_fd) < 0)
         {
           SPDLOG_LOGGER_WARN(m_log,"Failed to close file descriptor : [{0} : {1}]",errno,std::strerror(errno));
         }
+#else
+        close(m_fd);
+#endif
         m_is_open = false;
       }
       return CIB_I2C_OK;
@@ -215,13 +235,16 @@ namespace cib
         return CIB_I2C_ErrorDeviceNotOpen;
       }
       int wr_bytes = write ( m_fd , &addr , 1 ) ;
+#ifdef I2C_PRINT
       if ( wr_bytes != 1 )
       {
         SPDLOG_LOGGER_ERROR(m_log,"i2c write returned [{0}], instead of 1",wr_bytes);
       }
+#endif
       uint8_t buf[3];
       //int rd_bytes = read ( m_fd, buf, 1 ) ;
       int rd_bytes = i2c_smbus_read_byte_data(m_fd,addr);
+#ifdef I2C_PRINT
       if ( rd_bytes == -1 )
       {
         SPDLOG_LOGGER_ERROR(m_log,"i2c read returned [{0}], instead of 1",rd_bytes);
@@ -230,9 +253,11 @@ namespace cib
       {
         SPDLOG_LOGGER_DEBUG(m_log,"Readback: [{0} 0x{0:x}]",rd_bytes);
       }
-
+#endif
       data = rd_bytes & 0xFF;
+#ifdef I2C_PRINT
       SPDLOG_LOGGER_DEBUG(m_log,"Value: [{0} 0x{0:x}]",data);
+#endif
       return CIB_I2C_OK;
     }
 
@@ -270,7 +295,9 @@ namespace cib
       ret = i2c_smbus_write_byte_data(m_fd,addr,msg);
       if (ret)
       {
+#ifdef I2C_PRINT
         SPDLOG_LOGGER_ERROR(m_log,"Failed to write message [{0} : {1}]",errno,std::strerror(errno));
+#endif
         return CIB_I2C_ErrorWriteRegister;
       }
       return CIB_I2C_OK;
@@ -305,7 +332,9 @@ namespace cib
       ret = i2c_smbus_write_word_data(m_fd,addr,msg);
       if (ret)
       {
+#ifdef I2C_PRINT
         SPDLOG_LOGGER_ERROR(m_log,"Failed to write message [{0} : {1}]",errno,std::strerror(errno));
+#endif
         return CIB_I2C_ErrorWriteRegister;
       }
       return CIB_I2C_OK;
@@ -330,14 +359,18 @@ namespace cib
       }
       // and now just write the thing
       // zero means success
+#ifdef I2C_PRINT
       SPDLOG_LOGGER_TRACE(m_log,"Calling write with args: [{0} {1} 0x{1:x} {2} 0x{2:x} {3} 0x{3:x}]",m_fd,addr,len,fmt::ptr(data));
-
+#endif
       ret = i2c_smbus_write_block_data(m_fd,addr,len,data);
+#ifdef I2C_PRINT
       SPDLOG_LOGGER_DEBUG(m_log,"Write call returned: [{0}]",ret);
-
+#endif
       if (ret < 0)
       {
+#ifdef I2C_PRINT
         SPDLOG_LOGGER_ERROR(m_log,"Failed to write message [{0} : {1}]",errno,std::strerror(errno));
+#endif
         return CIB_I2C_ErrorWriteRegister;
       }
       return CIB_I2C_OK;
@@ -359,7 +392,9 @@ namespace cib
       ret = i2c_smbus_read_byte_data(m_fd,addr);
       if (ret < 0)
       {
+#ifdef I2C_PRINT
         SPDLOG_LOGGER_ERROR(m_log,"Failed to read message [{0} : {1}]",errno,std::strerror(errno));
+#endif
         return CIB_I2C_ErrorReadRegister;
       }
       data  = ret & 0xFF;
@@ -378,16 +413,24 @@ namespace cib
 //      {
 //        return ret;
 //      }
+#ifdef I2C_PRINT
       SPDLOG_LOGGER_DEBUG(m_log,"Calling read word with [fd {0} : add 0x{1:x}]",m_fd,addr);
+#endif
       ret = i2c_smbus_read_word_data(m_fd,addr);
       if (ret < 0)
       {
+#ifdef I2C_PRINT
         SPDLOG_LOGGER_ERROR(m_log,"Failed to read message [{0} : {1}]",errno,std::strerror(errno));
+#endif
         return CIB_I2C_ErrorReadRegister;
       }
+#ifdef I2C_PRINT
       SPDLOG_LOGGER_DEBUG(m_log,"Received output [{0} : 0x{0:x}]",ret);
+#endif
       data  = ret & 0xFFFF;
+#ifdef I2C_PRINT
       SPDLOG_LOGGER_DEBUG(m_log,"Recasted output [{0} : 0x{0:x}]",data);
+#endif
       return CIB_I2C_OK;
     }
     int  Device::read_block_register_smbus(const uint8_t addr, uint8_t &len, uint8_t *&data)
@@ -409,7 +452,9 @@ namespace cib
       ret = i2c_smbus_read_block_data(m_fd,addr,data);
       if (ret < 0)
       {
+#ifdef I2C_PRINT
         SPDLOG_LOGGER_ERROR(m_log,"Failed to read message [{0} : {1}]",errno,std::strerror(errno));
+#endif
         return CIB_I2C_ErrorReadRegister;
       }
       len = ret & 0xFFFF;
@@ -425,10 +470,14 @@ namespace cib
       {
         return CIB_I2C_ErrorDeviceNotOpen;
       }
+#ifdef I2C_PRINT
       SPDLOG_LOGGER_TRACE(m_log,"Selecting device at address [{0} : {1} 0x{1:x}]",m_fd,m_dev_addr);
+#endif
       if (ioctl ( m_fd , I2C_SLAVE, m_dev_addr ) < 0 )
       {
+#ifdef I2C_PRINT
         SPDLOG_LOGGER_ERROR(m_log,"Failed to select device [{0} : 0x{1:x}] : {2} : {3}",m_bus_num,m_dev_addr,errno,std::strerror(errno));
+#endif
         close_device();
         return CIB_I2C_ErrorSelectDevice;
       }
