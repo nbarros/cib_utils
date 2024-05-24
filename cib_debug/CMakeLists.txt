@@ -35,4 +35,6 @@ set_target_properties(cib_manager PROPERTIES CXX_EXTENSIONS OFF)
 target_include_directories(cib_manager PRIVATE ${PROJECT_SOURCE_DIR}/cib_debug)
 target_include_directories(cib_manager PRIVATE ${PROJECT_SOURCE_DIR}/common)
 target_include_directories(cib_manager PUBLIC ${ZeroMQ_INCLUDE_DIR})
-target_link_libraries(cib_manager common readline)
+target_include_directories(cib_manager PRIVATE ${PROJECT_SOURCE_DIR}/i2c)
+
+target_link_libraries(cib_manager cib_i2c common readline)

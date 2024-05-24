@@ -22,15 +22,39 @@ extern "C"
 {
 #include <readline/readline.h>
 #include <readline/history.h>
-}
+#include <unistd.h>
+};
+
 #include <cib_mem.h>
+#include <AD5339.h>
 
 volatile std::atomic<bool> run;
+
+typedef struct mapped_mem
+{
+  uintptr_t p_addr;
+  uintptr_t v_addr;
+} mapped_mem;
+
+typedef struct cib_mem
+{
+  mapped_mem config;
+  mapped_mem gpio_pdts;
+  mapped_mem gpio_align;
+  mapped_mem gpio_laser;
+  mapped_mem gpio_mon_0;
+  mapped_mem gpio_mon_1;
+} cib_mem;
+
+
+cib_mem g_cib_mem;
 
 ////////////////////////////////////////////////////////
 ///  prototypes
 ////////////////////////////////////////////////////////
 
+void clear_memory();
+int setup_dac(cib::i2c::AD5339 &dac);
 int pdts_reset(uintptr_t &addr);
 int pdts_get_status(uintptr_t &addr, uint16_t &pdts_stat, uint16_t &pdts_addr, uint16_t &pdts_ctl);
 int pdts_set_addr(uintptr_t &addr,uint16_t pdts_addr);
@@ -51,7 +75,7 @@ int set_laser_settings(uintptr_t &addr,
                        uint32_t fire_state, uint32_t fire_width,
                        uint32_t qs_state,  uint32_t qs_width, uint32_t qs_delay, uint32_t fire_period);
 
-int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_align, int argc, char** argv);
+int run_command(int argc, char** argv);
 void print_help();
 
 
@@ -83,6 +107,61 @@ int test_read_write(uintptr_t &addr_io, uintptr_t &addr_i)
   }
   spdlog::info("All tests were successful");
   return 0;
+}
+
+
+void clear_memory()
+{
+  spdlog::info("Unmapping the register memory");
+  spdlog::debug("* config");
+  int ret = cib::util::unmap_mem(g_cib_mem.config.v_addr,PAGE_SIZE);
+  if (ret != 0)
+  {
+    spdlog::error("Failed to unmap config");
+  }
+  ret = cib::util::unmap_mem(g_cib_mem.gpio_laser.v_addr,PAGE_SIZE);
+  if (ret != 0)
+  {
+    spdlog::error("Failed to unmap laser");
+  }
+  ret = cib::util::unmap_mem(g_cib_mem.gpio_align.v_addr,PAGE_SIZE);
+  if (ret != 0)
+  {
+    spdlog::error("Failed to unmap align");
+  }
+  ret = cib::util::unmap_mem(g_cib_mem.gpio_pdts.v_addr,PAGE_SIZE);
+  if (ret != 0)
+  {
+    spdlog::error("Failed to unmap pdts");
+  }
+  ret = cib::util::unmap_mem(g_cib_mem.gpio_mon_0.v_addr,PAGE_SIZE);
+  if (ret != 0)
+  {
+    spdlog::error("Failed to unmap mon_0");
+  }
+  ret = cib::util::unmap_mem(g_cib_mem.gpio_mon_1.v_addr,PAGE_SIZE);
+  if (ret != 0)
+  {
+    spdlog::error("Failed to unmap mon_1");
+  }
+ }
+
+int setup_dac(cib::i2c::AD5339 &dac)
+{
+  spdlog::debug("Configuring the DAC to the appropriate settings [bus = 7; addr = 0xd]");
+  int res = dac.set_bus(7);
+  if (res != CIB_I2C_OK)
+  {
+    spdlog::critical("Failed to set bus number. Returned 0x{:X} ({})",res,cib::i2c::strerror(res));
+    return res;
+  }
+  res = dac.set_dev_number(0xd);
+  if (res != CIB_I2C_OK)
+  {
+    spdlog::critical("Failed to set dev number. Returned 0x{:X} ({})",res,cib::i2c::strerror(res));
+    return res;
+  }
+  return CIB_I2C_OK;
 }
 
 // implement soeme extra commands
@@ -119,11 +198,17 @@ int get_motor_init_position(uintptr_t addr)
 int get_align_laser_settings(uintptr_t &addr)
 {
   spdlog::info("Getting alignment laser settings");
-  uint32_t width = cib::util::reg_read(addr+(CONF_CH_OFFSET*17));
-  width = width & cib::util::bitmask(0,15);
 
-  uint32_t period = cib::util::reg_read(addr+(CONF_CH_OFFSET*16));
-  width = width & cib::util::bitmask(0,23);
+  uintptr_t maddr = addr + (GPIO_CH_OFFSET*1);
+  uint32_t mask = cib::util::bitmask(15,0);
+  uint32_t width = cib::util::reg_read(maddr);
+  width = width & mask;
+
+  // the period is located in channel 0
+  maddr =  addr + (GPIO_CH_OFFSET*0);
+  uint32_t period = cib::util::reg_read(maddr);
+  mask = cib::util::bitmask(23,0);
+  period = period & mask;
   spdlog::info("Current settings : width {0} ({1} us) period {2} ({3} us)",width,float(width)/16.,period,float(period)/16.0);
   return 0;
 }
@@ -134,24 +219,29 @@ int set_align_laser_settings(uintptr_t &addr, const uint32_t width, const uint32
   set_align_laser_state(addr,0UL);
 
   spdlog::info("Setting alignment laser settings");
+  uintptr_t maddr = addr + (GPIO_CH_OFFSET*1);
 
-  uint32_t mask = cib::util::bitmask(0,15);
-  spdlog::trace("Setting width with 0x{0:x} (mask 0x{1:X}",width, mask);
-  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*17),width,mask);
+  // ch 1: [15:0]
+  uint32_t mask = cib::util::bitmask(15,0);
+  spdlog::trace("Setting width with 0x{0:x} (mask 0x{1:X})",width, mask);
+  cib::util::reg_write_mask(maddr,width,mask);
   spdlog::trace("Width set");
   // now the period
-  mask = cib::util::bitmask(0,23);
+
+  maddr = addr + (GPIO_CH_OFFSET*0);
+  mask = cib::util::bitmask(23,0);
   spdlog::trace("Setting period with 0x{0:x} (mask 0x{1:X}",period, mask);
-  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*16),period,mask);
+  cib::util::reg_write_mask(maddr,period,mask);
   return 0;
 }
 
 int get_align_laser_state(uintptr_t &addr)
 {
   spdlog::info("Getting alignment laser state");
-  uint32_t state_word = cib::util::reg_read(addr+(CONF_CH_OFFSET*0));
+  uintptr_t maddr = addr + (GPIO_CH_OFFSET*0);
+  uint32_t state_word = cib::util::reg_read(maddr);
 
-  uint32_t mask = cib::util::bitmask(26,26);
+  uint32_t mask = cib::util::bitmask(31,31);
   uint32_t state = state_word & mask;
   spdlog::info("Alignment laser state : {0}",(state==0)?0:1);
   return 0;
@@ -160,40 +250,50 @@ int get_align_laser_state(uintptr_t &addr)
 int set_align_laser_state(uintptr_t &addr, uint32_t state)
 {
   spdlog::info("Setting alignment laser state to {0}",state);
+  uintptr_t maddr = addr + (GPIO_CH_OFFSET*0);
 
-  uint32_t state_word = cib::util::reg_read(addr+(CONF_CH_OFFSET*0));
-  uint32_t mask = cib::util::bitmask(26,26);
-  state = state <<26;
-  cib::util::reg_write_mask(addr,state,mask);
+  uint32_t state_word = cib::util::reg_read(maddr);
+  uint32_t mask = cib::util::bitmask(31,31);
+  cib::util::reg_write_mask_offset(maddr,state,mask,31);
   return 0;
 }
 
 int get_laser_settings(uintptr_t &addr)
 {
   spdlog::info("Getting laser settings");
-  uint32_t state_word = cib::util::reg_read(addr+(CONF_CH_OFFSET*0));
-  uint32_t reg10 = cib::util::reg_read(addr+(CONF_CH_OFFSET*10));
-  uint32_t reg11 = cib::util::reg_read(addr+(CONF_CH_OFFSET*11));
-  uint32_t reg12 = cib::util::reg_read(addr+(CONF_CH_OFFSET*12));
+
+  // in fact there are only 2 registers to be read
+  // FIXME: Make qswitch width independet
+  //        Make period settable
+
+  uint32_t maddr = addr +(GPIO_CH_OFFSET*0);
+
+  uint32_t fire_word = cib::util::reg_read(maddr);
+  maddr = addr +(GPIO_CH_OFFSET*1);
+  uint32_t qswitch_word = cib::util::reg_read(maddr);
+
   spdlog::trace("unpacking info");
   // now unpack the settings
   uint32_t mask = cib::util::bitmask(31,31);
-  uint32_t fire_state = (state_word & mask) >> 31;
+  uint32_t fire_state = (fire_word & mask) >> 31;
 
-  mask = cib::util::bitmask(0,11);
-  uint32_t fire_width = reg10 & mask;
+  mask = cib::util::bitmask(11,0);
+  uint32_t fire_width = fire_word & mask;
 
-  mask = cib::util::bitmask(0,23);
-  uint32_t fire_period = reg12 & mask;
+  uint32_t fire_period = 6250000;
+//  mask = cib::util::bitmask(23,0);
+//  uint32_t fire_period = reg12 & mask;
 
   mask = cib::util::bitmask(31,31);
-  uint32_t qs_state = (reg10 & mask ) >> 31;
+  uint32_t qs_state = (qswitch_word & mask ) >> 31;
 
-  mask = cib::util::bitmask(12,23);
-  uint32_t qs_width = (reg10 & mask ) >> 12;
+//  mask = cib::util::bitmask(15,0);
+//  uint32_t qs_width = (reg10 & mask ) >> 12;
 
-  mask = cib::util::bitmask(0,14);
-  uint32_t qs_delay = (reg11 & mask );
+  uint32_t qs_width = fire_width;
+
+  mask = cib::util::bitmask(14,0);
+  uint32_t qs_delay = (qswitch_word & mask );
 
 
   spdlog::info("Laser setttings :\n"
@@ -213,15 +313,17 @@ int get_laser_settings(uintptr_t &addr)
 
 int set_laser_fire_state(uintptr_t &addr, uint32_t state)
 {
+  uint32_t maddr = addr +(GPIO_CH_OFFSET*0);
   uint32_t mask = cib::util::bitmask(31,31);
-  cib::util::reg_write_mask_offset(addr+(CONF_CH_OFFSET*0),state,mask,31);
+  cib::util::reg_write_mask_offset(maddr,state,mask,31);
   return 0;
 }
 
 int set_laser_qswitch_state(uintptr_t &addr, uint32_t state)
 {
+  uint32_t maddr = addr +(GPIO_CH_OFFSET*0);
   uint32_t mask = cib::util::bitmask(31,31);
-  cib::util::reg_write_mask_offset(addr+(CONF_CH_OFFSET*10),state,mask,31);
+  cib::util::reg_write_mask_offset(maddr,state,mask,31);
   return 0;
 }
 
@@ -230,28 +332,30 @@ int set_laser_fire(uintptr_t &addr, const uint32_t width, const uint32_t period 
 {
   // first make sure to shut down the laser
   // keep track of the current laser state
-  uint32_t state_word = cib::util::reg_read(addr+(CONF_CH_OFFSET*0));
+  uint32_t maddr = addr +(GPIO_CH_OFFSET*0);
+
+  uint32_t state_word = cib::util::reg_read(maddr);
   uint32_t state_mask = cib::util::bitmask(31,31);
   uint32_t state_cache = state_word & state_mask;
   set_laser_fire_state(addr,0UL);
 
   // take care of the width
-  uint32_t mask = cib::util::bitmask(0,11);
+  uint32_t mask = cib::util::bitmask(11,0);
   uint32_t w = width & mask;
-  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*10),w,mask);
+  cib::util::reg_write_mask(maddr,w,mask);
 
   //
-  if (period != 6250000)
-  {
-    spdlog::warn("Overriding laser frequency. You better know what you're doing!!!!");
-  }
-  mask = cib::util::bitmask(0,23);
-  uint32_t p = period & mask;
-  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*12),p,mask);
+//  if (period != 6250000)
+//  {
+//    //spdlog::warn("Overriding laser frequency. You better know what you're doing!!!!");
+//  }
+//  mask = cib::util::bitmask(23,0);
+//  uint32_t p = period & mask;
+//  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*12),p,mask);
 
   // reset the original state
   spdlog::debug("Resetting the original operation state");
-  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*0),state_cache,state_mask);
+  cib::util::reg_write_mask(maddr,state_cache,state_mask);
 
   return 0;
 }
@@ -260,33 +364,38 @@ int set_laser_qswitch(uintptr_t &addr, const uint32_t width, const uint32_t dela
 {
   // first make sure to shut down the laser
   // keep track of the current laser state
-  uint32_t state_word = cib::util::reg_read(addr+(CONF_CH_OFFSET*0));
+  uint32_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uint32_t state_word = cib::util::reg_read(maddr);
   uint32_t state_mask = cib::util::bitmask(31,31);
   uint32_t state_cache = state_word & state_mask;
   spdlog::debug("Stopping the laser while settings are changing");
   set_laser_fire_state(addr,0UL);
 
   spdlog::debug("Stopping the laser qswitch while settings are changing");
-  uint32_t qs_word = cib::util::reg_read(addr+(CONF_CH_OFFSET*10));
+  maddr = addr +(GPIO_CH_OFFSET*1);
+  uint32_t qs_word = cib::util::reg_read(maddr);
   uint32_t qs_mask = cib::util::bitmask(31,31);
   uint32_t qs_cache = qs_word & qs_mask;
 
   set_laser_qswitch_state(addr,0UL);
 
   // take care of the width
-  uint32_t mask = cib::util::bitmask(12,23);
-  uint32_t w = (width << 12) & mask;
-  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*10),w,mask);
+  maddr = addr +(GPIO_CH_OFFSET*0);
+  uint32_t mask = cib::util::bitmask(11,0);
+  cib::util::reg_write_mask(maddr,width,mask);
 
-  mask = cib::util::bitmask(0,14);
+  maddr = addr +(GPIO_CH_OFFSET*1);
+  mask = cib::util::bitmask(14,0);
   uint32_t d = delay & mask;
-  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*11),d,mask);
+  cib::util::reg_write_mask(maddr,d,mask);
 
   // reset the original state
   spdlog::debug("Resetting the original qswitch state");
-  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*10),qs_cache,qs_mask);
+  maddr = addr +(GPIO_CH_OFFSET*1);
+  cib::util::reg_write_mask(maddr,qs_cache,qs_mask);
   spdlog::debug("Resetting the original fire state");
-  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*0),state_cache,state_mask);
+  maddr = addr +(GPIO_CH_OFFSET*0);
+  cib::util::reg_write_mask(maddr,state_cache,state_mask);
 
   return 0;
 }
@@ -399,7 +508,7 @@ int pdts_set_addr(uintptr_t &addr,uint16_t pdts_addr)
   return 0;
 }
 
-int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_align, int argc, char** argv)
+int run_command(int argc, char** argv)
 {
   if (argc< 1)
   {
@@ -423,7 +532,7 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
     if (argc == 1)
     {
       // just want to do a readout
-      res = get_motor_init_position(memaddr);
+      res = get_motor_init_position(g_cib_mem.config.v_addr);
     }
     if ((argc != 4))
     {
@@ -436,7 +545,7 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
       int32_t pi2 = std::strtol(argv[2],NULL,0);
       int32_t pi3 = std::strtol(argv[3],NULL,0);
       spdlog::debug("Setting motor init position to [RNN800,RNN600,LSTAGE] = [{0},{1},{2}]",pi1,pi2,pi3);
-      int res = set_motor_init_position(memaddr,pi1,pi2,pi3);
+      int res = set_motor_init_position(g_cib_mem.config.v_addr,pi1,pi2,pi3);
     }
     if (res != 0)
     {
@@ -451,7 +560,7 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
     if (argc == 1)
     {
       // just show the existing settings
-      res = get_align_laser_settings(memaddr_align);
+      res = get_align_laser_settings(g_cib_mem.gpio_align.v_addr);
     }
     else if (argc !=3)
     {
@@ -463,7 +572,7 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
       uint32_t width = std::strtoul(argv[1],NULL,0);
       uint32_t period = std::strtoul(argv[2],NULL,0);
       spdlog::debug("Setting the alignment laser settings to w {0} p {1}",width,period);
-      res = set_align_laser_settings(memaddr_align,width,period);
+      res = set_align_laser_settings(g_cib_mem.gpio_align.v_addr,width,period);
     }
     if (res != 0)
     {
@@ -477,7 +586,7 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
     if (argc == 1)
     {
       // just show the current state
-      res = get_align_laser_state(memaddr_align);
+      res = get_align_laser_state(g_cib_mem.gpio_align.v_addr);
     }
     else if (argc !=2)
     {
@@ -488,7 +597,7 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
     {
       uint32_t state = std::strtoul(argv[1],NULL,0);
       spdlog::debug("Setting the alignment laser state to {0}",state);
-      res = set_align_laser_state(memaddr_align,state);
+      res = set_align_laser_state(g_cib_mem.gpio_align.v_addr,state);
     }
     if (res != 0)
     {
@@ -502,7 +611,7 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
     if (argc == 1)
     {
       // just show the current state
-      res = get_laser_settings(memaddr);
+      res = get_laser_settings(g_cib_mem.gpio_laser.v_addr);
     }
     // this has quite a few arguments
     // fire width, fire period, qswitch width, qswitch period
@@ -524,7 +633,7 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
           ,fire_state, fire_width, float(fire_width)/16.0
           ,qs_state, qs_width,float(qs_width)/16.0,qs_delay,float(qs_delay)/16.0);
 
-      res = set_laser_settings(memaddr,fire_state,fire_width,qs_state,qs_width,qs_delay);
+      res = set_laser_settings(g_cib_mem.gpio_laser.v_addr,fire_state,fire_width,qs_state,qs_width,qs_delay);
     }
     else if (argc == 7)
     {
@@ -546,7 +655,7 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
           "\t delay   {8} ({9} us)\n"
           ,fire_state, fire_width, float(fire_width)/16.0,fire_period,float(fire_period)/16.0
           ,qs_state, qs_width,float(qs_width)/16.0,qs_delay,float(qs_delay)/16.0);
-      res = set_laser_settings(memaddr,fire_state,fire_width,qs_state,qs_width,qs_delay,fire_period);
+      res = set_laser_settings(g_cib_mem.gpio_laser.v_addr,fire_state,fire_width,qs_state,qs_width,qs_delay,fire_period);
 
     }
     else
@@ -570,19 +679,19 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
     if (argc == 1)
     {
       // just return the whole laser settings
-      return get_laser_settings(memaddr);
+      return get_laser_settings(g_cib_mem.gpio_laser.v_addr);
     }
     else if (argc == 3)
     {
       spdlog::warn("Setting firing period. You better know what you are doing!!!");
       uint32_t width = std::strtoul(argv[1],NULL,0);
       uint32_t period = std::strtoul(argv[2],NULL,0);
-      res = set_laser_fire(memaddr,width,period);
+      res = set_laser_fire(g_cib_mem.gpio_laser.v_addr,width,period);
     }
     else if (argc == 2)
     {
       uint32_t width = std::strtoul(argv[1],NULL,0);
-      res = set_laser_fire(memaddr,width);
+      res = set_laser_fire(g_cib_mem.gpio_laser.v_addr,width);
     }
     else
     {
@@ -600,13 +709,13 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
     if (argc == 1)
     {
       // just return the whole laser settings
-      return get_laser_settings(memaddr);
+      return get_laser_settings(g_cib_mem.gpio_laser.v_addr);
     }
     else if (argc == 3)
     {
       uint32_t width = std::strtoul(argv[1],NULL,0);
       uint32_t delay = std::strtoul(argv[2],NULL,0);
-      res = set_laser_qswitch(memaddr,width,delay);
+      res = set_laser_qswitch(g_cib_mem.gpio_laser.v_addr,width,delay);
     }
     else
     {
@@ -625,12 +734,12 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
     if (argc == 1)
     {
       // just return the whole laser settings
-      return get_laser_settings(memaddr);
+      return get_laser_settings(g_cib_mem.gpio_laser.v_addr);
     }
     else if (argc == 2)
     {
       uint32_t state = std::strtoul(argv[1],NULL,0);
-      res = set_laser_fire_state(memaddr,state);
+      res = set_laser_fire_state(g_cib_mem.gpio_laser.v_addr,state);
     }
     else
     {
@@ -648,12 +757,12 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
     if (argc == 1)
     {
       // just return the whole laser settings
-      return get_laser_settings(memaddr);
+      return get_laser_settings(g_cib_mem.gpio_laser.v_addr);
     }
     else if (argc == 2)
     {
       uint32_t state = std::strtoul(argv[1],NULL,0);
-      res = set_laser_qswitch_state(memaddr,state);
+      res = set_laser_qswitch_state(g_cib_mem.gpio_laser.v_addr,state);
     }
     else
     {
@@ -679,7 +788,7 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
     {
       spdlog::debug("Querying the pdts status");
       uint16_t stat, addr, ctl;
-      res = pdts_get_status(memaddr_pdts,stat,addr,ctl);
+      res = pdts_get_status(g_cib_mem.gpio_pdts.v_addr,stat,addr,ctl);
       if (res != 0)
       {
         spdlog::error("Failed to get PDTS status");
@@ -692,7 +801,7 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
       {
         uint16_t addr = std::strtol(argv[2],NULL,0);
         spdlog::info("Setting address to 0x{0:x}",addr);
-        res = pdts_set_addr(memaddr_pdts,addr);
+        res = pdts_set_addr(g_cib_mem.gpio_pdts.v_addr,addr);
         if (res != 0)
         {
           spdlog::error("Failed to set address");
@@ -717,12 +826,22 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_a
   else if (cmd == "pdts_reset")
   {
     spdlog::info("Resetting the PDTS system");
-    int res = pdts_reset(memaddr_pdts);
+    int res = pdts_reset(g_cib_mem.gpio_pdts.v_addr);
     if (res != 0)
     {
       spdlog::error("Failed to reset PDTS");
     }
     return 0;
+  }
+  else if (cmd == "dac")
+  {
+
+    if (argc == 1)
+    {
+      spdlog::info("Querying the DAC level");
+
+    }
+
   }
   else
   {
@@ -772,7 +891,7 @@ int main(int argc, char** argv)
   // setup spdlog
   run.store(true);
   // initiate spdlog
-  spdlog::set_pattern("lbls : [%^%L%$] %v");
+  spdlog::set_pattern("cib : [%^%L%$] %v");
   spdlog::set_level(spdlog::level::trace); // Set global log level to debug
 
   spdlog::trace("Just testing a trace");
@@ -780,41 +899,78 @@ int main(int argc, char** argv)
 
   spdlog::info("Mapping configuration module");
   int memfd = 0;
-  uintptr_t vmem_conf = cib::util::map_phys_mem(memfd,CONF_MEM_LOW,CONF_MEM_HIGH);
-  spdlog::debug("\nGot virtual address [0x{:X}]",vmem_conf);
-  if (vmem_conf == 0x0)
+  g_cib_mem.config.p_addr = CONF_MEM_LOW;
+  g_cib_mem.config.v_addr = cib::util::map_phys_mem(memfd,CONF_MEM_LOW,CONF_MEM_HIGH);
+  //uintptr_t vmem_conf = cib::util::map_phys_mem(memfd,CONF_MEM_LOW,CONF_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.config.v_addr);
+  if (g_cib_mem.config.v_addr == 0x0)
   {
     spdlog::critical("Failed to map configuration memory. This is not going to end well.");
+    clear_memory();
     return 255;
   }
 
   spdlog::info("Mapping GPIO_PDTS");
-  uintptr_t vmem_pdts = cib::util::map_phys_mem(memfd,GPIO_PDTS_MEM_LOW,GPIO_PDTS_MEM_HIGH);
-  spdlog::debug("\nGot virtual address [0x{:X}]",vmem_pdts);
-  if (vmem_pdts == 0x0)
+  g_cib_mem.gpio_pdts.p_addr = GPIO_PDTS_MEM_LOW;
+  g_cib_mem.gpio_pdts.v_addr = cib::util::map_phys_mem(memfd,GPIO_PDTS_MEM_LOW,GPIO_PDTS_MEM_HIGH);
+  //uintptr_t vmem_pdts = cib::util::map_phys_mem(memfd,GPIO_PDTS_MEM_LOW,GPIO_PDTS_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_pdts.v_addr);
+  if (g_cib_mem.gpio_pdts.v_addr == 0x0)
   {
     spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    clear_memory();
     return 255;
   }
 
-  spdlog::info("Mapping ALIGN_PDTS");
-  uintptr_t vmem_align = cib::util::map_phys_mem(memfd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
-  spdlog::debug("\nGot virtual address [0x{:X}]",vmem_align);
-  if (vmem_align == 0x0)
+  spdlog::info("Mapping GPIO_ALIGN");
+  g_cib_mem.gpio_align.p_addr = GPIO_ALIGN_MEM_LOW;
+  g_cib_mem.gpio_align.v_addr = cib::util::map_phys_mem(memfd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
+//  uintptr_t vmem_align = cib::util::map_phys_mem(memfd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_align.v_addr);
+  if (g_cib_mem.gpio_align.v_addr == 0x0)
   {
     spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    clear_memory();
     return 255;
   }
 
+  spdlog::info("Mapping GPIO_LASER");
+  g_cib_mem.gpio_laser.p_addr = GPIO_LASER_MEM_LOW;
+  g_cib_mem.gpio_laser.v_addr = cib::util::map_phys_mem(memfd,GPIO_LASER_MEM_LOW,GPIO_LASER_MEM_HIGH);
+//  uintptr_t vmem_align = cib::util::map_phys_mem(memfd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_laser.v_addr);
+  if (g_cib_mem.gpio_laser.v_addr == 0x0)
+  {
+    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    clear_memory();
+    return 255;
+  }
 
   spdlog::info("Mapping GPIO_I_0");
-  uintptr_t vmem_gpio2 = cib::util::map_phys_mem(memfd,GPIO_I_0_MEM_LOW,GPIO_I_0_MEM_HIGH);
-  spdlog::debug("\nGot virtual address [0x{:X}]",vmem_gpio2);
-  if (vmem_gpio2 == 0x0)
+  g_cib_mem.gpio_mon_0.p_addr = GPIO_I_0_MEM_LOW;
+
+  g_cib_mem.gpio_mon_0.v_addr = cib::util::map_phys_mem(memfd,GPIO_I_0_MEM_LOW,GPIO_I_0_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_mon_0.v_addr);
+  if (g_cib_mem.gpio_mon_0.v_addr == 0x0)
   {
     spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    clear_memory();
     return 255;
   }
+
+  spdlog::info("Mapping GPIO_I_1");
+  g_cib_mem.gpio_mon_1.p_addr = GPIO_I_1_MEM_LOW;
+
+  g_cib_mem.gpio_mon_1.v_addr = cib::util::map_phys_mem(memfd,GPIO_I_1_MEM_LOW,GPIO_I_1_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_mon_1.v_addr);
+  if (g_cib_mem.gpio_mon_1.v_addr == 0x0)
+  {
+    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    clear_memory();
+    return 255;
+  }
+
+//  spdlog::info("Checking that all registers are mapped");
 
 //  int res = test_read_write(vmem_gpio, vmem_gpio2);
 //  spdlog::info("Tests done");
@@ -823,6 +979,17 @@ int main(int argc, char** argv)
 //    spdlog::critical("Something failed on memory mapped register control");
 //    return 0;
 //  }
+
+  spdlog::info("Instantiating the DAC");
+  cib::i2c::AD5339 dac;
+  int ret = setup_dac(dac);
+  if (ret != CIB_I2C_OK)
+  {
+    spdlog::error("Failed to set up dac. Got code 0x{0:X} {1}",ret,cib::i2c::strerror(ret));
+    clear_memory();
+    return 0;
+  }
+  // by default set to the appropriate settings
   print_help();
 
   // -- now start the real work
@@ -842,22 +1009,39 @@ int main(int argc, char** argv)
       count++;
       ptr++;
     }
-    if (count > 0) {
+    if (count > 0)
+    {
       char **cmd = new char*[count];
       cmd[0] = strtok(buf, delim);
       int i;
-      for (i = 1; cmd[i-1] != NULL && i < count; i++) {
+      for (i = 1; cmd[i-1] != NULL && i < count; i++)
+      {
         cmd[i] = strtok(NULL, delim);
       }
       if (cmd[i-1] == NULL) i--;
-      int ret = run_command(vmem_conf, vmem_pdts, vmem_align,i,cmd);
+      int ret = run_command(i,cmd);
       delete [] cmd;
-      if (ret == 255) return 0;
-      if (ret != 0) return ret;
-    } else {
+      if (ret == 255)
+      {
+        clear_memory();
+        close(memfd);
+        return 0;
+      }
+      if (ret != 0)
+      {
+        clear_memory();
+        close(memfd);
+        return ret;
+      }
+    }
+    else
+    {
+      clear_memory();
+      close(memfd);
       return 0;
     }
     free(buf);
   }
+  close(memfd);
   return 0;
 }

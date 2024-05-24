@@ -17,6 +17,7 @@ namespace cib
   namespace util
   {
     uintptr_t map_phys_mem(int &fd, uintptr_t base_addr,uintptr_t high_addr);
+    int unmap_mem(uintptr_t virt_addr, size_t size);
     int unmap_mem(void* virt_addr, size_t size);
     uint32_t reg_read(uintptr_t addr);
     void reg_write(uintptr_t addr, uint32_t value);
@@ -26,7 +27,7 @@ namespace cib
     void* cast_to_void(uintptr_t val);
 //    uint32_t cast_to_uint(void* val);
     uintptr_t cast_to_uintptr(void* val);
-    uint32_t bitmask(uint16_t lowbit, uint16_t highbit);
+    uint32_t bitmask(uint32_t lowbit, uint32_t highbit);
     const std::string dump_binary(uint32_t val);
 
   }

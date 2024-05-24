@@ -64,6 +64,11 @@ namespace cib
       return munmap(virt_addr,size);
     }
 
+    int unmap_mem(uintptr_t virt_addr, size_t size)
+    {
+      return unmap_mem(cast_to_void(virt_addr),size);
+    }
+
     uint32_t reg_read(uintptr_t addr)
     {
       spdlog::trace("Reading register 0x{0:X}",addr);
@@ -114,10 +119,10 @@ namespace cib
     }
 
     // from https://stackoverflow.com/questions/35109714/can-someone-explain-how-this-bitmask-code-works
-    uint32_t bitmask(uint16_t highbit, uint16_t lowbit)
+    uint32_t bitmask(uint32_t highbit, uint32_t lowbit)
     {
       // sort the bit order or this fails miserably
-      if (highbit > lowbit)
+      if (highbit < lowbit)
       {
         uint32_t tmp = lowbit;
         lowbit = highbit;
