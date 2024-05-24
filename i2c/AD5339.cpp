@@ -42,7 +42,7 @@ namespace cib
       //      {
       //        return ret;
       //      }
-      // remember that this actually words in two steps
+      // remember that this actually works in two steps
       // first a pointer word and then a data word
       dac_ptr_t ptr;
       switch(ch)
