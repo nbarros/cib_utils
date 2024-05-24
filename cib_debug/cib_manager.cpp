@@ -348,7 +348,8 @@ int pdts_get_status(uintptr_t &addr, uint16_t &pdts_stat, uint16_t &pdts_addr, u
   uint32_t reg_val = cib::util::reg_read(addr+(GPIO_CH_OFFSET*0));
 
   uint32_t mask = cib::util::bitmask(0,3);
-  spdlog::debug("Register value 0x{0:X} status 0x{1:X}",reg_val, (reg_val & mask));
+
+  spdlog::debug("Register value 0x{0:X} mask 0x{1:X} status 0x{2:X}",reg_val, mask, (reg_val & mask));
   spdlog::info("PDTS STATUS : 0x{0:X}",(reg_val & mask));
   pdts_stat = (reg_val & mask);
 

@@ -116,6 +116,14 @@ namespace cib
     // from https://stackoverflow.com/questions/35109714/can-someone-explain-how-this-bitmask-code-works
     uint32_t bitmask(uint16_t highbit, uint16_t lowbit)
     {
+      // sort the bit order or this fails miserably
+      if (highbit > lowbit)
+      {
+        uint32_t tmp = lowbit;
+        lowbit = highbit;
+        highbit = tmp;
+      }
+
       uint32_t i = ~0U;
         return ~(i << highbit << 1) & (i << lowbit);
     }
