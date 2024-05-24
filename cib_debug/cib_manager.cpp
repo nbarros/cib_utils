@@ -156,13 +156,19 @@ int setup_dac(cib::i2c::AD5339 &dac)
   int res = dac.set_bus(7);
   if (res != CIB_I2C_OK)
   {
-    spdlog::critical("Failed to set bus number. Returned 0x{:X} ({})",res,cib::i2c::strerror(res));
+    spdlog::critical("Failed to set bus number. Returned 0x{0:X} ({1})",res,cib::i2c::strerror(res));
     return res;
   }
   res = dac.set_dev_number(0xd);
   if (res != CIB_I2C_OK)
   {
-    spdlog::critical("Failed to set dev number. Returned 0x{:X} ({})",res,cib::i2c::strerror(res));
+    spdlog::critical("Failed to set dev number. Returned 0x{0:X} ({1})",res,cib::i2c::strerror(res));
+    return res;
+  }
+  res = dac.open_device();
+  if (res != CIB_I2C_OK)
+  {
+    spdlog::critical("Failed to open device. Returned 0x{0:X} ({1})",res,cib::i2c::strerror(res));
     return res;
   }
   return CIB_I2C_OK;
@@ -181,7 +187,7 @@ int set_motor_init_position(uintptr_t addr, uint32_t m1, uint32_t m2, uint32_t m
 
 
   // read the register back to be sure
-  spdlog::info("Position set (readback [{},{},{}])",
+  spdlog::info("Position set (readback [{0},{1},{2}])",
                cib::util::reg_read(addr+(CONF_CH_OFFSET*1)),
                cib::util::reg_read(addr+(CONF_CH_OFFSET*2)),
                cib::util::reg_read(addr+(CONF_CH_OFFSET*3)));
@@ -191,7 +197,7 @@ int set_motor_init_position(uintptr_t addr, uint32_t m1, uint32_t m2, uint32_t m
 int get_motor_init_position(uintptr_t addr)
 {
   spdlog::info("Getting initial movement position from motors");
-  spdlog::info("Position [RNN800, RNN600, LSTAGE] = [{},{},{}]",
+  spdlog::info("Position [RNN800, RNN600, LSTAGE] = [{0},{1},{2}]",
                cib::util::reg_read(addr+(CONF_CH_OFFSET*1)),
                cib::util::reg_read(addr+(CONF_CH_OFFSET*2)),
                cib::util::reg_read(addr+(CONF_CH_OFFSET*3)));
@@ -847,7 +853,7 @@ int run_command(int argc, char** argv)
       int ret = g_dac->get_level(1,level);
       if (ret != CIB_I2C_OK)
       {
-        spdlog::error("Failed to get level: [{0} : {}]",ret,cib::i2c::strerror(ret));
+        spdlog::error("Failed to get level: [{0} : {1}]",ret,cib::i2c::strerror(ret));
       }
       else
       {
@@ -868,7 +874,7 @@ int run_command(int argc, char** argv)
          }
          else
          {
-           spdlog::info("DAC set successfully : {}",level);
+           spdlog::info("DAC set successfully : {0}",level);
          }
       }
       else
