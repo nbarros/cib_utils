@@ -48,6 +48,7 @@ typedef struct cib_mem
 
 
 cib_mem g_cib_mem;
+cib::i2c::AD5339 *g_dac;
 
 ////////////////////////////////////////////////////////
 ///  prototypes
@@ -144,6 +145,9 @@ void clear_memory()
   {
     spdlog::error("Failed to unmap mon_1");
   }
+  spdlog::info("Destroying the DAC connection");
+  delete g_dac;
+  g_dac = nullptr;
  }
 
 int setup_dac(cib::i2c::AD5339 &dac)
@@ -839,9 +843,60 @@ int run_command(int argc, char** argv)
     if (argc == 1)
     {
       spdlog::info("Querying the DAC level");
-
+      uint16_t level = 0x0;
+      int ret = g_dac->get_level(1,level);
+      if (ret != CIB_I2C_OK)
+      {
+        spdlog::error("Failed to get level: [{0} : {}]",ret,cib::i2c::strerror(ret));
+      }
+      else
+      {
+        spdlog::info("DAC level : {0}",level);
+      }
     }
+    else if (argc == 3)
+    {
+      if (std::string(argv[1]) == "set")
+      {
+        uint16_t level = (uint16_t) strtoul(argv[2], NULL, 0);
 
+        spdlog::info("Setting DAC to {0}",level);
+        int ret = g_dac->set_level(cib::i2c::AD5339::CH_1,level);
+        if (ret != CIB_I2C_OK)
+         {
+           spdlog::error("Failed to set level: [{0} : {1}]",ret,cib::i2c::strerror(ret));
+         }
+         else
+         {
+           spdlog::info("DAC set successfully : {}",level);
+         }
+      }
+      else
+      {
+        spdlog::error("Unknown DAC subcommand");
+        spdlog::warn("Usage: dac [set <value>]");
+        spdlog::warn("Usage: dac [clear]");
+      }
+    }
+    else if (argc == 2)
+    {
+      if (std::string(argv[1]) == "clear")
+      {
+        spdlog::info("Clearing DAC");
+        g_dac->clear(cib::i2c::AD5339::CH_1);
+      }
+      else
+      {
+        spdlog::error("Unknown DAC subcommand");
+        spdlog::warn("Usage: dac [set <value>]");
+        spdlog::warn("Usage: dac [clear]");
+      }
+    }
+    else
+    {
+      spdlog::warn("Usage: dac set <value>");
+    }
+    return 0;
   }
   else
   {
@@ -981,8 +1036,9 @@ int main(int argc, char** argv)
 //  }
 
   spdlog::info("Instantiating the DAC");
-  cib::i2c::AD5339 dac;
-  int ret = setup_dac(dac);
+  //cib::i2c::AD5339 dac;
+  g_dac = new cib::i2c::AD5339();
+  int ret = setup_dac(*g_dac);
   if (ret != CIB_I2C_OK)
   {
     spdlog::error("Failed to set up dac. Got code 0x{0:X} {1}",ret,cib::i2c::strerror(ret));
