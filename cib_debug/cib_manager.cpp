@@ -49,11 +49,13 @@ typedef struct cib_mem
 
 cib_mem g_cib_mem;
 cib::i2c::AD5339 *g_dac;
+int g_mem_fd;
 
 ////////////////////////////////////////////////////////
 ///  prototypes
 ////////////////////////////////////////////////////////
 
+int map_memory();
 void clear_memory();
 int setup_dac(cib::i2c::AD5339 &dac);
 int pdts_reset(uintptr_t &addr);
@@ -110,6 +112,78 @@ int test_read_write(uintptr_t &addr_io, uintptr_t &addr_i)
   return 0;
 }
 
+int map_memory()
+{
+
+  spdlog::info("Mapping configuration module");
+  g_mem_fd = 0;
+  g_cib_mem.config.p_addr = CONF_MEM_LOW;
+  g_cib_mem.config.v_addr = cib::util::map_phys_mem(g_mem_fd,CONF_MEM_LOW,CONF_MEM_HIGH);
+  //uintptr_t vmem_conf = cib::util::map_phys_mem(g_mem_fd,CONF_MEM_LOW,CONF_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.config.v_addr);
+  if (g_cib_mem.config.v_addr == 0x0)
+  {
+    spdlog::critical("Failed to map configuration memory. This is not going to end well.");
+    return 255;
+  }
+
+  spdlog::info("Mapping GPIO_PDTS");
+  g_cib_mem.gpio_pdts.p_addr = GPIO_PDTS_MEM_LOW;
+  g_cib_mem.gpio_pdts.v_addr = cib::util::map_phys_mem(g_mem_fd,GPIO_PDTS_MEM_LOW,GPIO_PDTS_MEM_HIGH);
+  //uintptr_t vmem_pdts = cib::util::map_phys_mem(memfd,GPIO_PDTS_MEM_LOW,GPIO_PDTS_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_pdts.v_addr);
+  if (g_cib_mem.gpio_pdts.v_addr == 0x0)
+  {
+    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    return 255;
+  }
+
+  spdlog::info("Mapping GPIO_ALIGN");
+  g_cib_mem.gpio_align.p_addr = GPIO_ALIGN_MEM_LOW;
+  g_cib_mem.gpio_align.v_addr = cib::util::map_phys_mem(g_mem_fd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
+//  uintptr_t vmem_align = cib::util::map_phys_mem(memfd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_align.v_addr);
+  if (g_cib_mem.gpio_align.v_addr == 0x0)
+  {
+    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    return 255;
+  }
+
+  spdlog::info("Mapping GPIO_LASER");
+  g_cib_mem.gpio_laser.p_addr = GPIO_LASER_MEM_LOW;
+  g_cib_mem.gpio_laser.v_addr = cib::util::map_phys_mem(g_mem_fd,GPIO_LASER_MEM_LOW,GPIO_LASER_MEM_HIGH);
+//  uintptr_t vmem_align = cib::util::map_phys_mem(memfd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_laser.v_addr);
+  if (g_cib_mem.gpio_laser.v_addr == 0x0)
+  {
+    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    return 255;
+  }
+
+  spdlog::info("Mapping GPIO_I_0");
+  g_cib_mem.gpio_mon_0.p_addr = GPIO_I_0_MEM_LOW;
+
+  g_cib_mem.gpio_mon_0.v_addr = cib::util::map_phys_mem(g_mem_fd,GPIO_I_0_MEM_LOW,GPIO_I_0_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_mon_0.v_addr);
+  if (g_cib_mem.gpio_mon_0.v_addr == 0x0)
+  {
+    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    return 255;
+  }
+
+  spdlog::info("Mapping GPIO_I_1");
+  g_cib_mem.gpio_mon_1.p_addr = GPIO_I_1_MEM_LOW;
+
+  g_cib_mem.gpio_mon_1.v_addr = cib::util::map_phys_mem(g_mem_fd,GPIO_I_1_MEM_LOW,GPIO_I_1_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_mon_1.v_addr);
+  if (g_cib_mem.gpio_mon_1.v_addr == 0x0)
+  {
+    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    return 255;
+  }
+
+  return 0;
+}
 
 void clear_memory()
 {
@@ -148,6 +222,8 @@ void clear_memory()
   spdlog::info("Destroying the DAC connection");
   delete g_dac;
   g_dac = nullptr;
+
+  close(g_mem_fd);
  }
 
 int setup_dac(cib::i2c::AD5339 &dac)
@@ -953,84 +1029,39 @@ int main(int argc, char** argv)
   run.store(true);
   // initiate spdlog
   spdlog::set_pattern("cib : [%^%L%$] %v");
-  spdlog::set_level(spdlog::level::trace); // Set global log level to debug
+  spdlog::set_level(spdlog::level::info); // Set global log level to info
 
+
+  int c;
+  opterr = 0;
+  int report_level = SPDLOG_LEVEL_INFO;
+  while ((c = getopt (argc, argv, "v")) != -1)
+  {
+    switch (c)
+      {
+      case 'v':
+        if (report_level > 0)
+        {
+          report_level--;
+        }
+        break;
+      default: /* ? */
+        spdlog::warn("Usage: cib_manager [-v]  (repeated flags further increase verbosity)");
+        return 1;
+      }
+  }
+
+  spdlog::info("Log level: {0} : {1}",static_cast<int>(spdlog::get_level()),spdlog::level::to_string_view(spdlog::get_level()).data());
   spdlog::trace("Just testing a trace");
   spdlog::debug("Just testing a debug");
 
-  spdlog::info("Mapping configuration module");
-  int memfd = 0;
-  g_cib_mem.config.p_addr = CONF_MEM_LOW;
-  g_cib_mem.config.v_addr = cib::util::map_phys_mem(memfd,CONF_MEM_LOW,CONF_MEM_HIGH);
-  //uintptr_t vmem_conf = cib::util::map_phys_mem(memfd,CONF_MEM_LOW,CONF_MEM_HIGH);
-  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.config.v_addr);
-  if (g_cib_mem.config.v_addr == 0x0)
+  int ret = map_memory();
+
+  if (ret != 0)
   {
-    spdlog::critical("Failed to map configuration memory. This is not going to end well.");
+    spdlog::critical("Failed to map memory. Clearing out.");
     clear_memory();
-    return 255;
   }
-
-  spdlog::info("Mapping GPIO_PDTS");
-  g_cib_mem.gpio_pdts.p_addr = GPIO_PDTS_MEM_LOW;
-  g_cib_mem.gpio_pdts.v_addr = cib::util::map_phys_mem(memfd,GPIO_PDTS_MEM_LOW,GPIO_PDTS_MEM_HIGH);
-  //uintptr_t vmem_pdts = cib::util::map_phys_mem(memfd,GPIO_PDTS_MEM_LOW,GPIO_PDTS_MEM_HIGH);
-  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_pdts.v_addr);
-  if (g_cib_mem.gpio_pdts.v_addr == 0x0)
-  {
-    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
-    clear_memory();
-    return 255;
-  }
-
-  spdlog::info("Mapping GPIO_ALIGN");
-  g_cib_mem.gpio_align.p_addr = GPIO_ALIGN_MEM_LOW;
-  g_cib_mem.gpio_align.v_addr = cib::util::map_phys_mem(memfd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
-//  uintptr_t vmem_align = cib::util::map_phys_mem(memfd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
-  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_align.v_addr);
-  if (g_cib_mem.gpio_align.v_addr == 0x0)
-  {
-    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
-    clear_memory();
-    return 255;
-  }
-
-  spdlog::info("Mapping GPIO_LASER");
-  g_cib_mem.gpio_laser.p_addr = GPIO_LASER_MEM_LOW;
-  g_cib_mem.gpio_laser.v_addr = cib::util::map_phys_mem(memfd,GPIO_LASER_MEM_LOW,GPIO_LASER_MEM_HIGH);
-//  uintptr_t vmem_align = cib::util::map_phys_mem(memfd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
-  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_laser.v_addr);
-  if (g_cib_mem.gpio_laser.v_addr == 0x0)
-  {
-    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
-    clear_memory();
-    return 255;
-  }
-
-  spdlog::info("Mapping GPIO_I_0");
-  g_cib_mem.gpio_mon_0.p_addr = GPIO_I_0_MEM_LOW;
-
-  g_cib_mem.gpio_mon_0.v_addr = cib::util::map_phys_mem(memfd,GPIO_I_0_MEM_LOW,GPIO_I_0_MEM_HIGH);
-  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_mon_0.v_addr);
-  if (g_cib_mem.gpio_mon_0.v_addr == 0x0)
-  {
-    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
-    clear_memory();
-    return 255;
-  }
-
-  spdlog::info("Mapping GPIO_I_1");
-  g_cib_mem.gpio_mon_1.p_addr = GPIO_I_1_MEM_LOW;
-
-  g_cib_mem.gpio_mon_1.v_addr = cib::util::map_phys_mem(memfd,GPIO_I_1_MEM_LOW,GPIO_I_1_MEM_HIGH);
-  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_mon_1.v_addr);
-  if (g_cib_mem.gpio_mon_1.v_addr == 0x0)
-  {
-    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
-    clear_memory();
-    return 255;
-  }
-
 //  spdlog::info("Checking that all registers are mapped");
 
 //  int res = test_read_write(vmem_gpio, vmem_gpio2);
@@ -1044,7 +1075,7 @@ int main(int argc, char** argv)
   spdlog::info("Instantiating the DAC");
   //cib::i2c::AD5339 dac;
   g_dac = new cib::i2c::AD5339();
-  int ret = setup_dac(*g_dac);
+  ret = setup_dac(*g_dac);
   if (ret != CIB_I2C_OK)
   {
     spdlog::error("Failed to set up dac. Got code 0x{0:X} {1}",ret,cib::i2c::strerror(ret));
@@ -1086,24 +1117,21 @@ int main(int argc, char** argv)
       if (ret == 255)
       {
         clear_memory();
-        close(memfd);
         return 0;
       }
       if (ret != 0)
       {
         clear_memory();
-        close(memfd);
         return ret;
       }
     }
     else
     {
       clear_memory();
-      close(memfd);
       return 0;
     }
     free(buf);
   }
-  close(memfd);
+  clear_memory();
   return 0;
 }
