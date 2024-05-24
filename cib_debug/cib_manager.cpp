@@ -42,6 +42,7 @@ typedef struct cib_mem
   mapped_mem gpio_pdts;
   mapped_mem gpio_align;
   mapped_mem gpio_laser;
+  mapped_mem gpio_misc;
   mapped_mem gpio_mon_0;
   mapped_mem gpio_mon_1;
 } cib_mem;
@@ -59,6 +60,18 @@ int map_memory();
 void clear_memory();
 int setup_dac(cib::i2c::AD5339 &dac);
 int pdts_reset(uintptr_t &addr);
+
+int lbls_set_width(uintptr_t &addr, uint32_t &width);
+int lbls_set_state(uintptr_t &addr, uint32_t state);
+int lbls_get_status(uintptr_t &addr, uint32_t &state, uint32_t &width);
+int sys_reset(uintptr_t &addr);
+int trigger_pulser_get_state(uintptr_t &addr, uint32_t &state);
+int trigger_pulser_set_state(uintptr_t &addr, uint32_t &state);
+int trigger_ext_get_state(uintptr_t &addr, uint32_t &state);
+int trigger_ext_set_state(uintptr_t &addr, uint32_t &state);
+int shutter_set_state(uintptr_t &addr, uint32_t &state);
+int shutter_get_state(uintptr_t &addr, uint32_t &state);
+
 int pdts_get_status(uintptr_t &addr, uint16_t &pdts_stat, uint16_t &pdts_addr, uint16_t &pdts_ctl);
 int pdts_set_addr(uintptr_t &addr,uint16_t pdts_addr);
 int get_align_laser_state(uintptr_t &addr);
@@ -112,6 +125,120 @@ int test_read_write(uintptr_t &addr_io, uintptr_t &addr_i)
   return 0;
 }
 
+int lbls_set_width(uintptr_t &addr, uint32_t &width)
+{
+  int res = 0;
+  spdlog::debug("Setting lbls width to ({0}) 0x{0:X}",width);
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
+  spdlog::trace("Caching the state register");
+  uint32_t state_word = cib::util::reg_read(maddr);
+  uint32_t state_mask = cib::util::bitmask(31,31);
+  uint32_t state_cache = state_word & state_mask;
+  spdlog::trace("Stopping the LBLS triggers (if enabled)");
+  (void)lbls_set_state(addr,0x0);
+  // writ the new width
+  uint32_t mask = cib::util::bitmask(7,0);
+  spdlog::trace("Writing 0x{0:X} mask 0x{1:X}",width,mask);
+  cib::util::reg_write_mask(maddr,width,mask);
+  spdlog::trace("Restoring state");
+  cib::util::reg_write_mask(maddr,state_cache,state_mask);
+
+  return res;
+}
+
+int lbls_set_state(uintptr_t &addr, uint32_t state)
+{
+  int res = 0;
+  spdlog::debug("Setting the lbls state to  ({0}) 0x{0:X}",state);
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uint32_t mask = cib::util::bitmask(31,31);
+  cib::util::reg_write_mask_offset(maddr,state,mask,31);
+  return res;
+
+}
+int lbls_get_status(uintptr_t &addr, uint32_t &state, uint32_t &width)
+{
+  int res = 0;
+  spdlog::debug("Querying LBLS status");
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uint32_t reg_val = cib::util::reg_read(maddr);
+  uint32_t mask = cib::util::bitmask(31,31);
+  state = ((reg_val & mask) >> 31);
+  mask = cib::util::bitmask(7,0);
+  width = (reg_val & mask);
+
+  return res;
+}
+int sys_reset(uintptr_t &addr)
+{
+  spdlog::info("Resetting the system");
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uint32_t mask = cib::util::bitmask(27,27);
+  cib::util::reg_write_mask_offset(maddr,0x1,mask,27);
+  std::this_thread::sleep_for(std::chrono::microseconds(10));
+  cib::util::reg_write_mask_offset(maddr,0x0,mask,27);
+
+  return 0;
+}
+
+int trigger_pulser_get_state(uintptr_t &addr, uint32_t &state)
+{
+  spdlog::info("Querying pulser trigger state");
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uint32_t mask = cib::util::bitmask(29,29);
+  uint32_t reg_val = cib::util::reg_read(maddr);
+  state = ((reg_val & mask) >> 29);
+  spdlog::info("STATE : {0}",state);
+  return 0;
+}
+
+int trigger_pulser_set_state(uintptr_t &addr, uint32_t &state)
+{
+  spdlog::info("Setting pulser trigger state to {0}",state);
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uint32_t mask = cib::util::bitmask(29,29);
+  cib::util::reg_write_mask_offset(maddr,state,mask,29);
+  return 0;
+}
+int trigger_ext_get_state(uintptr_t &addr, uint32_t &state)
+{
+  spdlog::info("Querying ext trigger state");
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uint32_t mask = cib::util::bitmask(30,30);
+  uint32_t reg_val = cib::util::reg_read(maddr);
+  state = ((reg_val & mask) >> 30);
+  spdlog::info("STATE : {0}",state);
+  return 0;
+}
+int trigger_ext_set_state(uintptr_t &addr, uint32_t &state)
+{
+  spdlog::info("Setting ext trigger state to {0}",state);
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uint32_t mask = cib::util::bitmask(30,30);
+  cib::util::reg_write_mask_offset(maddr,state,mask,30);
+  return 0;
+}
+
+int shutter_set_state(uintptr_t &addr, uint32_t &state)
+{
+  spdlog::info("Setting shutter user state to {0}",state);
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uint32_t mask = cib::util::bitmask(28,28);
+  cib::util::reg_write_mask_offset(maddr,state,mask,28);
+  return 0;
+}
+int shutter_get_state(uintptr_t &addr, uint32_t &state)
+{
+  spdlog::info("Querying shutter user state");
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uint32_t mask = cib::util::bitmask(28,28);
+  uint32_t reg_val = cib::util::reg_read(maddr);
+  state = ((reg_val & mask) >> 28);
+  spdlog::info("STATE : {0}",state);
+  return 0;
+}
+
+
 int map_memory()
 {
 
@@ -155,6 +282,16 @@ int map_memory()
 //  uintptr_t vmem_align = cib::util::map_phys_mem(memfd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
   spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_laser.v_addr);
   if (g_cib_mem.gpio_laser.v_addr == 0x0)
+  {
+    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    return 255;
+  }
+
+  spdlog::info("Mapping GPIO_MISC");
+  g_cib_mem.gpio_misc.p_addr = GPIO_MISC_MEM_LOW;
+  g_cib_mem.gpio_misc.v_addr = cib::util::map_phys_mem(g_mem_fd,GPIO_MISC_MEM_LOW,GPIO_MISC_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_misc.v_addr);
+  if (g_cib_mem.gpio_misc.v_addr == 0x0)
   {
     spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
     return 255;
@@ -208,6 +345,11 @@ void clear_memory()
   if (ret != 0)
   {
     spdlog::error("Failed to unmap pdts");
+  }
+  ret = cib::util::unmap_mem(g_cib_mem.gpio_misc.v_addr,PAGE_SIZE);
+  if (ret != 0)
+  {
+    spdlog::error("Failed to unmap misc");
   }
   ret = cib::util::unmap_mem(g_cib_mem.gpio_mon_0.v_addr,PAGE_SIZE);
   if (ret != 0)
@@ -523,7 +665,7 @@ int pdts_reset(uintptr_t &addr)
   spdlog::trace("Sleeping for 10 us");
   std::this_thread::sleep_for(std::chrono::microseconds(10));
   spdlog::trace("Setting reset low");
-  cib::util::reg_write_mask(memaddr,0x0,mask);
+  cib::util::reg_write_mask_offset(memaddr,0x0,mask,31);
   return 0;
 }
 
@@ -859,11 +1001,49 @@ int run_command(int argc, char** argv)
   else if (cmd == "lbls")
   {
     spdlog::debug("Configuring lbls communication system");
-    //int res =
+    int res = 0;
     if (argc == 1)
     {
       // just read the settings
-
+      uint32_t state, width;
+      res = lbls_get_status(g_cib_mem.gpio_misc.v_addr, state, width);
+      if (res == 0)
+      {
+        spdlog::info("LBLS trigger settings:\n"
+            "STATE : {0}\n"
+            "WIDTH : {1}\n"
+        ,state,width);
+      }
+    }
+    else if (argc == 3)
+    {
+      if (std::string(argv[1])== "width")
+      {
+        uint32_t width = std::strtoul(argv[2],NULL,0);
+        spdlog::debug("Setting width to {0} (0x{0:X}",width);
+        res = lbls_set_width(g_cib_mem.gpio_misc.v_addr,width);
+      }
+      else if (std::string(argv[1])== "enable")
+      {
+        uint32_t state = std::strtoul(argv[2],NULL,0);
+        spdlog::debug("Setting lbls trigger state to {0}",state);
+        res = lbls_set_state(g_cib_mem.gpio_misc.v_addr,state);
+      }
+      else
+      {
+        spdlog::warn("Unknown subcommand [{0} {1}]",argv[1],argv[2]);
+        spdlog::warn("usage: lbls [width <width> (max 255)]");
+        spdlog::warn("usage:      [enable <state> (state: 1 (ON); 0 (OFF))]");
+      }
+    }
+    else
+    {
+      spdlog::warn("usage: lbls [width <width> (max 255)]");
+      spdlog::warn("usage:      [enable <state> (state: 1 (ON); 0 (OFF))]");
+    }
+    if (res != 0)
+    {
+      spdlog::error("Failed to execute command");
     }
     return 0;
   }
@@ -916,6 +1096,16 @@ int run_command(int argc, char** argv)
     if (res != 0)
     {
       spdlog::error("Failed to reset PDTS");
+    }
+    return 0;
+  }
+  else if (cmd == "sys_reset")
+  {
+    spdlog::info("Resetting the data queues");
+    int res = sys_reset(g_cib_mem.gpio_misc.v_addr);
+    if (res != 0)
+    {
+      spdlog::error("Failed to reset system");
     }
     return 0;
   }
@@ -984,6 +1174,93 @@ int run_command(int argc, char** argv)
     }
     return 0;
   }
+  else if (cmd == "pulse_trigger_enable")
+  {
+    int res = 0;
+    if (argc == 1)
+    {
+      spdlog::info("Checking status of internal 10 Hz pulser trigger");
+      uint32_t state;
+      res = trigger_pulser_get_state(g_cib_mem.gpio_misc.v_addr,state);
+      if (res == 0)
+      {
+        spdlog::info("STATE : {0}",state);
+      }
+    }
+    else if (argc == 2)
+    {
+      uint32_t state = std::strtol(argv[1],NULL,0);
+      spdlog::debug("Setting state to {0}",state);
+      res = trigger_pulser_set_state(g_cib_mem.gpio_misc.v_addr,state);
+    }
+    else
+    {
+      spdlog::warn("usage: pulse_trigger_enable [state] (state: 1(ON), 0(OFF)");
+    }
+    if (res != 0)
+    {
+      spdlog::error("Failed to execute command");
+    }
+    return 0;
+  }
+  else if (cmd == "shutter")
+  {
+    int res = 0;
+    if (argc == 1)
+    {
+      spdlog::info("Checking status of user forced shutter state");
+      uint32_t state;
+      res = shutter_get_state(g_cib_mem.gpio_misc.v_addr,state);
+      if (res == 0)
+      {
+        spdlog::info("STATE : {0}",state);
+      }
+    }
+    else if (argc == 2)
+    {
+      uint32_t state = std::strtol(argv[1],NULL,0);
+      spdlog::debug("Setting state to {0}",state);
+      res = shutter_set_state(g_cib_mem.gpio_misc.v_addr,state);
+    }
+    else
+    {
+      spdlog::warn("usage: shutter [state] (state: 1(FORCE CLOSE), 0(RELEASE FORCE)");
+    }
+    if (res != 0)
+    {
+      spdlog::error("Failed to execute command");
+    }
+    return 0;
+  }
+  else if (cmd == "ext_trigger_enable")
+  {
+    int res = 0;
+    if (argc == 1)
+    {
+      spdlog::info("Checking status of external input at SI1");
+      uint32_t state;
+      res = trigger_ext_get_state(g_cib_mem.gpio_misc.v_addr,state);
+      if (res == 0)
+      {
+        spdlog::info("STATE : {0}",state);
+      }
+    }
+    else if (argc == 2)
+    {
+      uint32_t state = std::strtol(argv[1],NULL,0);
+      spdlog::debug("Setting state to {0}",state);
+      res = trigger_ext_set_state(g_cib_mem.gpio_misc.v_addr,state);
+    }
+    else
+    {
+      spdlog::warn("usage: ext_trigger_enable [state] (state: 1(ON), 0(OFF)");
+    }
+    if (res != 0)
+    {
+      spdlog::error("Failed to execute command");
+    }
+    return 0;
+  }
   else
   {
     spdlog::error("Unknown command");
@@ -999,12 +1276,18 @@ void print_help()
   spdlog::info("    Operates the DAC. Available subcommands:");
   spdlog::info("      set <dac_level> (value between 0 and 4095)");
   spdlog::info("      clear");
+  spdlog::info("  ext_trigger_enable [state]");
+  spdlog::info("    Enable external trigger connected on the SI1");
+  spdlog::info("  pulse_trigger_enable [state]");
+  spdlog::info("    Enable pulser 10 Hz pulser trigger");
+  spdlog::info("  sys_reset");
+  spdlog::info("    Resets everything that is not on the PDTS system");
   spdlog::info("  pdts_reset");
   spdlog::info("    Resets the PDTS system");
   spdlog::info("  pdts [addr <addr>]");
   spdlog::info("    Gets the current state of the PDTS system");
-  spdlog::info("  lbls [state width]");
-  spdlog::info("    Configure the LBLS trigger");
+  spdlog::info("  lbls [state <state>] [width <width>]");
+  spdlog::info("    Configure the LBLS trigger. Only one subcommand can be issued at a time");
   spdlog::info("  align_laser [width period]");
   spdlog::info("    Config alignment laser");
   spdlog::info("  align_enable [state]");
