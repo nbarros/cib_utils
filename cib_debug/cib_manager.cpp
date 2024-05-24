@@ -91,6 +91,8 @@ int set_laser_settings(uintptr_t &addr,
                        uint32_t fire_state, uint32_t fire_width,
                        uint32_t qs_state,  uint32_t qs_width, uint32_t qs_delay, uint32_t fire_period);
 
+int get_dna(uintptr_t &addr);
+
 int run_command(int argc, char** argv);
 void print_help();
 
@@ -122,6 +124,22 @@ int test_read_write(uintptr_t &addr_io, uintptr_t &addr_i)
     return -1;
   }
   spdlog::info("All tests were successful");
+  return 0;
+}
+
+int get_dna(uintptr_t &addr1, uintptr_t &addr2)
+{
+  // this is a rather special case in which we need to look into two modules to get the whole information
+  spdlog::info("Getting the DNA from the silicon");
+  uintptr_t maddr = addr1 +(GPIO_CH_OFFSET*0);
+  uint32_t word0 = cib::util::reg_read(maddr);
+  maddr = addr1 +(GPIO_CH_OFFSET*1);
+  uint32_t word1 = cib::util::reg_read(maddr);
+  maddr = addr2 +(GPIO_CH_OFFSET*0);
+  uint32_t word2 = cib::util::reg_read(maddr);
+
+  spdlog::info("DNA : 0x{2:X} 0x{1:X} 0x{1:X}",word0,word1,word2);
+  spdlog::info("DNA (full) : 0x{2:X}{1:X}{1:X}",word0,word1,word2);
   return 0;
 }
 
@@ -1261,6 +1279,12 @@ int run_command(int argc, char** argv)
     }
     return 0;
   }
+  else if (cmd == "dna")
+  {
+    spdlog::debug("Getting DNA");
+    get_dna(g_cib_mem.gpio_mon_0.v_addr, g_cib_mem.gpio_mon_1.v_addr);
+    return 0;
+  }
   else
   {
     spdlog::error("Unknown command");
@@ -1272,6 +1296,8 @@ int run_command(int argc, char** argv)
 void print_help()
 {
   spdlog::info("Available commands (note, commands without arguments print current settings):");
+  spdlog::info("  dna");
+  spdlog::info("    Obtain the DNA value from the FPGA silicon.");
   spdlog::info("  dac [subcmd [subcmd_args]]");
   spdlog::info("    Operates the DAC. Available subcommands:");
   spdlog::info("      set <dac_level> (value between 0 and 4095)");
