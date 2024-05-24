@@ -19,6 +19,7 @@ extern "C"
 {
 #include <fcntl.h>
 #include <inttypes.h>
+#include <unistd.h>
 };
 
 namespace cib
@@ -35,13 +36,18 @@ namespace cib
         fd = open("/dev/mem",O_RDWR | O_SYNC);
         if (fd == -1)
         {
-          printf("Failed to map register [0x%" PRIx64 " 0x%" PRIx64 "].",base_addr,high_addr);
+          printf("Failed to open /dev/mem");
           fd = 0;
           return 0;
         }
       }
       // Map into user space the area of memory containing the device
-      mapped_addr = mmap(0, (high_addr-base_addr), PROT_READ | PROT_WRITE, MAP_SHARED, fd, dev_base & ~(high_addr-base_addr-1));
+      //mapped_addr = mmap(0, 0xFFF(high_addr-base_addr), PROT_READ | PROT_WRITE, MAP_SHARED, fd, dev_base & ~(high_addr-base_addr-1));
+
+      uintptr_t page_addr = (base_addr & (~(getpagesize()-1)));
+      uintptr_t page_offset = base_addr - page_addr;       //should be 0
+
+      mapped_addr = mmap(0, getpagesize(), PROT_READ | PROT_WRITE, MAP_SHARED, fd, page_addr);
       if ( (intptr_t)mapped_addr == -1) {
         printf("Failed to map register [0x%" PRIx64 " 0x%" PRIx64 "] into virtual address.",base_addr,high_addr);
         mapped_addr = 0;

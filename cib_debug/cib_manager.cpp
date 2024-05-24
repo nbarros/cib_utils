@@ -31,11 +31,13 @@ volatile std::atomic<bool> run;
 ///  prototypes
 ////////////////////////////////////////////////////////
 
+int pdts_reset(uintptr_t &addr);
+int pdts_get_status(uintptr_t &addr, uint16_t &pdts_stat, uint16_t &pdts_addr, uint16_t &pdts_ctl);
+int pdts_set_addr(uintptr_t &addr,uint16_t pdts_addr);
 int get_align_laser_state(uintptr_t &addr);
 int test_read_write(uintptr_t &addr_io, uintptr_t &addr_i);
 int set_motor_init_position(uintptr_t addr, uint32_t m1, uint32_t m2, uint32_t m3);
 int get_motor_init_position(uintptr_t addr);
-int reset_pdts(uintptr_t &addr);
 int get_align_laser_settings(uintptr_t &addr);
 int set_align_laser_settings(uintptr_t &addr, const uint32_t width, const uint32_t period);
 int get_align_laser_state(uintptr_t &addr);
@@ -49,7 +51,7 @@ int set_laser_settings(uintptr_t &addr,
                        uint32_t fire_state, uint32_t fire_width,
                        uint32_t qs_state,  uint32_t qs_width, uint32_t qs_delay, uint32_t fire_period);
 
-int run_command(uintptr_t &memaddr, int argc, char** argv);
+int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, int argc, char** argv);
 void print_help();
 
 
@@ -113,14 +115,6 @@ int get_motor_init_position(uintptr_t addr)
   return 0;
 }
 
-int reset_pdts(uintptr_t &addr)
-{
-  spdlog::info("Resting PDTS");
-  cib::util::reg_write_mask_offset(addr+(CONF_CH_OFFSET*0),0x1,(1<<25),25);
-  std::this_thread::sleep_for(std::chrono::microseconds(10));
-  cib::util::reg_write_mask_offset(addr+(CONF_CH_OFFSET*0),0x0,(1<<25),25);
-  return 0;
-}
 
 int get_align_laser_settings(uintptr_t &addr)
 {
@@ -325,20 +319,48 @@ int set_laser_settings(uintptr_t &addr,
   return 0;
 }
 
-
-int pdts_get_status(uintptr_t &addr)
+int pdts_reset(uintptr_t &addr)
 {
-  spdlog::debug("Reading address 0x{0:X}",addr+(CONF_CH_OFFSET*18));
-  uint32_t reg_val = cib::util::reg_read(addr+(CONF_CH_OFFSET*18));
-  spdlog::debug("Register value 0x{0:X} status 0x{1:X}",reg_val, (reg_val & 0xFF));
-  spdlog::info("PDTS STATUS : 0x{0:X}",(reg_val & 0xFF));
+  spdlog::info("Resetting PDTS");
+  uintptr_t memaddr = addr+(GPIO_CH_OFFSET*1);
+  uint32_t mask = cib::util::bitmask(31,31);
+  spdlog::trace("Setting reset high");
+  cib::util::reg_write_mask_offset(memaddr,0x1,mask,31);
+  spdlog::trace("Sleeping for 10 us");
+  std::this_thread::sleep_for(std::chrono::microseconds(10));
+  spdlog::trace("Setting reset low");
+  cib::util::reg_write_mask(memaddr,0x0,mask);
+  return 0;
+}
 
-  // this will likely failbecause of damn alignment
-  spdlog::trace("Checking pdts address");
-  reg_val = cib::util::reg_read(addr+(CONF_CH_OFFSET*13));
-  uint32_t mask = cib::util::bitmask(16,31);
-  spdlog::debug("Register value 0x{0:X} addr 0x{1:X}",reg_val, (reg_val & mask));
 
+int pdts_get_status(uintptr_t &addr, uint16_t &pdts_stat, uint16_t &pdts_addr, uint16_t &pdts_ctl)
+{
+  // information in the pdts status register:
+  // [0:3] : status
+  // [4:11] : ctrl
+  // [12:27] : address
+
+  // first channel of the GPIO is the read one
+  uintptr_t memaddr = addr + (GPIO_CH_OFFSET*0);
+
+  spdlog::debug("Reading memory address 0x{0:X}",memaddr);
+  uint32_t reg_val = cib::util::reg_read(addr+(GPIO_CH_OFFSET*0));
+
+  uint32_t mask = cib::util::bitmask(0,3);
+  spdlog::debug("Register value 0x{0:X} status 0x{1:X}",reg_val, (reg_val & mask));
+  spdlog::info("PDTS STATUS : 0x{0:X}",(reg_val & mask));
+  pdts_stat = (reg_val & mask);
+
+  spdlog::debug("Checking pdts address");
+  mask = cib::util::bitmask(12,27);
+  spdlog::info("PDTS ADDR : 0x{0:X}",((reg_val & mask)>>12));
+  pdts_addr = ((reg_val & mask)>>12);
+
+  spdlog::debug("Checking pdts ctrl register");
+  mask = cib::util::bitmask(4,11);
+  spdlog::info("PDTS CTRL : 0x{0:X}",((reg_val & mask)>>4));
+  pdts_ctl = ((reg_val & mask)>>4);
 
   return 0;
 }
@@ -346,17 +368,37 @@ int pdts_get_status(uintptr_t &addr)
 int pdts_set_addr(uintptr_t &addr,uint16_t pdts_addr)
 {
   spdlog::debug("Setting pdts address to 0x{0:X}",pdts_addr);
-  uint32_t mask = cib::util::bitmask(16,31);
-  //cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*13),pdts_addr,mask);
+
+  // first channel of the GPIO is the read one
+  uintptr_t memaddr = addr + (GPIO_CH_OFFSET*1);
+  spdlog::trace("Setting pdts address in memory address 0x{0:X}",memaddr);
+  uint32_t mask = cib::util::bitmask(0,15);
+  cib::util::reg_write_mask(memaddr,pdts_addr,mask);
+
+  // after this we should perhaps sleep for a little and recheck
+  spdlog::trace("Resetting the endpoint");
+  pdts_reset(addr);
+  spdlog::debug("Confirming pdts address change");
+  uint16_t st, ad, ct;
+  pdts_get_status(addr,st,ad,ct);
+
+  if (ad == pdts_addr)
+  {
+    spdlog::debug("Address change confirmed");
+  }
+  else
+  {
+    spdlog::warn("Mismatching addresses: set 0x{0:X} readback 0x{1:X}",pdts_addr,ad);
+  }
   // alternative, for now
-  uint32_t val = pdts_addr;
-  val = val << 16;
-  cib::util::reg_write(addr+(CONF_CH_OFFSET*13),val);
+//  uint32_t val = pdts_addr;
+//  val = val << 16;
+//  cib::util::reg_write(addr+(CONF_CH_OFFSET*13),val);
 
   return 0;
 }
 
-int run_command(uintptr_t &memaddr, int argc, char** argv)
+int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, int argc, char** argv)
 {
   if (argc< 1)
   {
@@ -635,10 +677,11 @@ int run_command(uintptr_t &memaddr, int argc, char** argv)
     if (argc == 1)
     {
       spdlog::debug("Querying the pdts status");
-      res = pdts_get_status(memaddr);
+      uint16_t stat, addr, ctl;
+      res = pdts_get_status(memaddr_pdts,stat,addr,ctl);
       if (res != 0)
       {
-        spdlog::error("Failed to reset PDTS");
+        spdlog::error("Failed to get PDTS status");
       }
     }
     else if (argc == 3)
@@ -648,7 +691,7 @@ int run_command(uintptr_t &memaddr, int argc, char** argv)
       {
         uint16_t addr = std::strtol(argv[2],NULL,0);
         spdlog::info("Setting address to 0x{0:x}",addr);
-        res = pdts_set_addr(memaddr,addr);
+        res = pdts_set_addr(memaddr_pdts,addr);
         if (res != 0)
         {
           spdlog::error("Failed to set address");
@@ -673,7 +716,7 @@ int run_command(uintptr_t &memaddr, int argc, char** argv)
   else if (cmd == "pdts_reset")
   {
     spdlog::info("Resetting the PDTS system");
-    int res = reset_pdts(memaddr);
+    int res = pdts_reset(memaddr_pdts);
     if (res != 0)
     {
       spdlog::error("Failed to reset PDTS");
@@ -683,7 +726,7 @@ int run_command(uintptr_t &memaddr, int argc, char** argv)
   else
   {
     spdlog::error("Unknown command");
-    return 1;
+    return 0;
   }
   return 0;
 }
@@ -744,10 +787,10 @@ int main(int argc, char** argv)
     return 255;
   }
 
-  spdlog::info("Mapping GPIO_IO_0");
-  uintptr_t vmem_gpio = cib::util::map_phys_mem(memfd,GPIO_IO_MEM_LOW,GPIO_IO_MEM_HIGH);
-  spdlog::debug("\nGot virtual address [0x{:X}]",vmem_gpio);
-  if (vmem_gpio == 0x0)
+  spdlog::info("Mapping GPIO_PDTS");
+  uintptr_t vmem_pdts = cib::util::map_phys_mem(memfd,GPIO_PDTS_MEM_LOW,GPIO_PDTS_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",vmem_pdts);
+  if (vmem_pdts == 0x0)
   {
     spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
     return 255;
@@ -762,13 +805,13 @@ int main(int argc, char** argv)
     return 255;
   }
 
-  int res = test_read_write(vmem_gpio, vmem_gpio2);
-  spdlog::info("Tests done");
-  if (res != 0)
-  {
-    spdlog::critical("Something failed on memory mapped register control");
-    return 0;
-  }
+//  int res = test_read_write(vmem_gpio, vmem_gpio2);
+//  spdlog::info("Tests done");
+//  if (res != 0)
+//  {
+//    spdlog::critical("Something failed on memory mapped register control");
+//    return 0;
+//  }
   print_help();
 
   // -- now start the real work
@@ -796,7 +839,7 @@ int main(int argc, char** argv)
         cmd[i] = strtok(NULL, delim);
       }
       if (cmd[i-1] == NULL) i--;
-      int ret = run_command(vmem_conf,i,cmd);
+      int ret = run_command(vmem_conf, vmem_pdts,i,cmd);
       delete [] cmd;
       if (ret == 255) return 0;
       if (ret != 0) return ret;
