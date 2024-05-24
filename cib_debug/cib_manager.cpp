@@ -51,7 +51,7 @@ int set_laser_settings(uintptr_t &addr,
                        uint32_t fire_state, uint32_t fire_width,
                        uint32_t qs_state,  uint32_t qs_width, uint32_t qs_delay, uint32_t fire_period);
 
-int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, int argc, char** argv);
+int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_align, int argc, char** argv);
 void print_help();
 
 
@@ -398,7 +398,7 @@ int pdts_set_addr(uintptr_t &addr,uint16_t pdts_addr)
   return 0;
 }
 
-int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, int argc, char** argv)
+int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, uintptr_t &memaddr_align, int argc, char** argv)
 {
   if (argc< 1)
   {
@@ -450,7 +450,7 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, int argc, char** arg
     if (argc == 1)
     {
       // just show the existing settings
-      res = get_align_laser_settings(memaddr);
+      res = get_align_laser_settings(memaddr_align);
     }
     else if (argc !=3)
     {
@@ -462,7 +462,7 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, int argc, char** arg
       uint32_t width = std::strtoul(argv[1],NULL,0);
       uint32_t period = std::strtoul(argv[2],NULL,0);
       spdlog::debug("Setting the alignment laser settings to w {0} p {1}",width,period);
-      res = set_align_laser_settings(memaddr,width,period);
+      res = set_align_laser_settings(memaddr_align,width,period);
     }
     if (res != 0)
     {
@@ -476,7 +476,7 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, int argc, char** arg
     if (argc == 1)
     {
       // just show the current state
-      res = get_align_laser_state(memaddr);
+      res = get_align_laser_state(memaddr_align);
     }
     else if (argc !=2)
     {
@@ -487,7 +487,7 @@ int run_command(uintptr_t &memaddr,uintptr_t &memaddr_pdts, int argc, char** arg
     {
       uint32_t state = std::strtoul(argv[1],NULL,0);
       spdlog::debug("Setting the alignment laser state to {0}",state);
-      res = set_align_laser_state(memaddr,state);
+      res = set_align_laser_state(memaddr_align,state);
     }
     if (res != 0)
     {
@@ -796,6 +796,16 @@ int main(int argc, char** argv)
     return 255;
   }
 
+  spdlog::info("Mapping ALIGN_PDTS");
+  uintptr_t vmem_align = cib::util::map_phys_mem(memfd,GPIO_ALIGN_MEM_LOW,GPIO_ALIGN_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",vmem_align);
+  if (vmem_align == 0x0)
+  {
+    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    return 255;
+  }
+
+
   spdlog::info("Mapping GPIO_I_0");
   uintptr_t vmem_gpio2 = cib::util::map_phys_mem(memfd,GPIO_I_0_MEM_LOW,GPIO_I_0_MEM_HIGH);
   spdlog::debug("\nGot virtual address [0x{:X}]",vmem_gpio2);
@@ -839,7 +849,7 @@ int main(int argc, char** argv)
         cmd[i] = strtok(NULL, delim);
       }
       if (cmd[i-1] == NULL) i--;
-      int ret = run_command(vmem_conf, vmem_pdts,i,cmd);
+      int ret = run_command(vmem_conf, vmem_pdts, vmem_align,i,cmd);
       delete [] cmd;
       if (ret == 255) return 0;
       if (ret != 0) return ret;
