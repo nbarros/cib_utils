@@ -219,7 +219,7 @@ int get_align_laser_settings(uintptr_t &addr)
   uint32_t period = cib::util::reg_read(maddr);
   mask = cib::util::bitmask(23,0);
   period = period & mask;
-  spdlog::info("Current settings : width {0} ({1} us) period {2} ({3} us)",width,float(width)/16.,period,float(period)/16.0);
+  spdlog::info("Current settings : width {0} ({1} us) period {2} ({3} us)",width,float(width)*16./1000.0,period,float(period)*16.0/1000.0);
   return 0;
 }
 
@@ -276,8 +276,7 @@ int get_laser_settings(uintptr_t &addr)
   // FIXME: Make qswitch width independet
   //        Make period settable
 
-  uint32_t maddr = addr +(GPIO_CH_OFFSET*0);
-
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
   uint32_t fire_word = cib::util::reg_read(maddr);
   maddr = addr +(GPIO_CH_OFFSET*1);
   uint32_t qswitch_word = cib::util::reg_read(maddr);
@@ -315,15 +314,15 @@ int get_laser_settings(uintptr_t &addr)
       "\t Enabled {5}\n"
       "\t Width   {6} ({7} us)\n"
       "\t delay   {8} ({9} us)\n"
-      ,fire_state, fire_width, float(fire_width)/16.0,fire_period,float(fire_period)/16.0
-      ,qs_state, qs_width,float(qs_width)/16.0,qs_delay,float(qs_delay)/16.0);
+      ,fire_state, fire_width, float(fire_width)*16.0/1000.0,fire_period,float(fire_period)*16.0/1000.0
+      ,qs_state, qs_width,float(qs_width)*16.0/1000.0,qs_delay,float(qs_delay)*16.0/1000.0);
   return 0;
 }
 
 
 int set_laser_fire_state(uintptr_t &addr, uint32_t state)
 {
-  uint32_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
   uint32_t mask = cib::util::bitmask(31,31);
   cib::util::reg_write_mask_offset(maddr,state,mask,31);
   return 0;
@@ -331,7 +330,7 @@ int set_laser_fire_state(uintptr_t &addr, uint32_t state)
 
 int set_laser_qswitch_state(uintptr_t &addr, uint32_t state)
 {
-  uint32_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
   uint32_t mask = cib::util::bitmask(31,31);
   cib::util::reg_write_mask_offset(maddr,state,mask,31);
   return 0;
@@ -342,7 +341,7 @@ int set_laser_fire(uintptr_t &addr, const uint32_t width, const uint32_t period 
 {
   // first make sure to shut down the laser
   // keep track of the current laser state
-  uint32_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
 
   uint32_t state_word = cib::util::reg_read(maddr);
   uint32_t state_mask = cib::util::bitmask(31,31);
@@ -374,7 +373,7 @@ int set_laser_qswitch(uintptr_t &addr, const uint32_t width, const uint32_t dela
 {
   // first make sure to shut down the laser
   // keep track of the current laser state
-  uint32_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
   uint32_t state_word = cib::util::reg_read(maddr);
   uint32_t state_mask = cib::util::bitmask(31,31);
   uint32_t state_cache = state_word & state_mask;
@@ -640,8 +639,8 @@ int run_command(int argc, char** argv)
           "\t Enabled {3}\n"
           "\t Width   {4} ({5} us)\n"
           "\t delay   {6} ({7} us)\n"
-          ,fire_state, fire_width, float(fire_width)/16.0
-          ,qs_state, qs_width,float(qs_width)/16.0,qs_delay,float(qs_delay)/16.0);
+          ,fire_state, fire_width, float(fire_width)*16.0/1000.0
+          ,qs_state, qs_width,float(qs_width)*16.0/1000.0,qs_delay,float(qs_delay)*16.0/1000.0);
 
       res = set_laser_settings(g_cib_mem.gpio_laser.v_addr,fire_state,fire_width,qs_state,qs_width,qs_delay);
     }
@@ -663,8 +662,8 @@ int run_command(int argc, char** argv)
           "\t Enabled {5}\n"
           "\t Width   {6} ({7} us)\n"
           "\t delay   {8} ({9} us)\n"
-          ,fire_state, fire_width, float(fire_width)/16.0,fire_period,float(fire_period)/16.0
-          ,qs_state, qs_width,float(qs_width)/16.0,qs_delay,float(qs_delay)/16.0);
+          ,fire_state, fire_width, float(fire_width)*16.0/1000.0,fire_period,float(fire_period)*16.0/1000.0
+          ,qs_state, qs_width,float(qs_width)*16.0/1000.0,qs_delay,float(qs_delay)*16.0/1000.0);
       res = set_laser_settings(g_cib_mem.gpio_laser.v_addr,fire_state,fire_width,qs_state,qs_width,qs_delay,fire_period);
 
     }
@@ -689,6 +688,7 @@ int run_command(int argc, char** argv)
     if (argc == 1)
     {
       // just return the whole laser settings
+      spdlog::debug("Getting laser settings");
       return get_laser_settings(g_cib_mem.gpio_laser.v_addr);
     }
     else if (argc == 3)
