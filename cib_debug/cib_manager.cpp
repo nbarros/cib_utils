@@ -91,12 +91,26 @@ int set_laser_settings(uintptr_t &addr,
                        uint32_t fire_state, uint32_t fire_width,
                        uint32_t qs_state,  uint32_t qs_width, uint32_t qs_delay, uint32_t fire_period);
 
-int get_dna(uintptr_t &addr);
+int get_dna(uintptr_t &addr1,uintptr_t &addr2);
 
 int run_command(int argc, char** argv);
 void print_help();
+void read_register(mapped_mem &reg);
 
 
+void read_register(mapped_mem &reg)
+{
+  // reads the input register
+  spdlog::info("--> Read register on [0x{0:X}]",reg.p_addr);
+  uint32_t val_ch0 = cib::util::reg_read(reg.v_addr);
+  uint32_t val_ch1 = cib::util::reg_read(reg.v_addr+GPIO_CH_OFFSET);
+
+  spdlog::info("Register values : \n"
+    "CH 0 : [{0}] [{0:X}]\n"
+    "CH 1 : [{1}] [{1:X}]\n"
+      , val_ch0, val_ch1
+  );
+}
 
 int test_read_write(uintptr_t &addr_io, uintptr_t &addr_i)
 {
@@ -1283,6 +1297,47 @@ int run_command(int argc, char** argv)
   {
     spdlog::debug("Getting DNA");
     get_dna(g_cib_mem.gpio_mon_0.v_addr, g_cib_mem.gpio_mon_1.v_addr);
+    return 0;
+  }
+  else if (cmd == "read")
+  {
+    if (argc != 2)
+    {
+      spdlog::error("usage: read <reg> (pdts,laser,align,misc,mon_0,mon_1)");
+    }
+    else
+    {
+      std::string scmd = argv[1];
+      if (scmd == "laser")
+      {
+        read_register(g_cib_mem.gpio_laser);
+      }
+      else if (scmd == "align")
+      {
+        read_register(g_cib_mem.gpio_align);
+      }
+      else if (scmd == "pdts")
+      {
+        read_register(g_cib_mem.gpio_pdts);
+      }
+      else if (scmd == "misc")
+      {
+        read_register(g_cib_mem.gpio_misc);
+      }
+      else if (scmd == "mon_0")
+      {
+        read_register(g_cib_mem.gpio_mon_0);
+      }
+      else if (scmd == "mon_1")
+      {
+        read_register(g_cib_mem.gpio_mon_1);
+      }
+      else
+      {
+        spdlog::error("Unknown register");
+        spdlog::error("usage: read <reg> (pdts,laser,align,misc,mon_0,mon_1)");
+      }
+    }
     return 0;
   }
   else
