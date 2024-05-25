@@ -812,7 +812,7 @@ int run_command(int argc, char** argv)
     }
     return 0;
   }
-  else if(cmd == "align_laser")
+  else if(cmd == "align_config")
   {
     int res = 0;
     // arguments are width and period
@@ -1369,7 +1369,7 @@ void print_help()
   spdlog::info("    Gets the current state of the PDTS system");
   spdlog::info("  lbls [state <state>] [width <width>]");
   spdlog::info("    Configure the LBLS trigger. Only one subcommand can be issued at a time");
-  spdlog::info("  align_laser [width period]");
+  spdlog::info("  align_config [width period]");
   spdlog::info("    Config alignment laser");
   spdlog::info("  align_enable [state]");
   spdlog::info("    Enable/disable alignment laser");
