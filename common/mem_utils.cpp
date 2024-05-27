@@ -153,6 +153,35 @@ namespace cib
       return std::bitset<32>(val).to_string();
     }
 
+    // converts a masked unsigned value into a signed
+    int32_t cast_signed(uint32_t reg, uint32_t mask)
+    {
+      // first find the msb in the mask. That will be the signed bit
+      uint32_t msb = 0;
+      int32_t res = 0;
+      for (size_t bit = 31; bit > 0; bit--)
+      {
+        if ((1U << bit) & mask)
+        {
+          msb = bit;
+          break;
+        }
+      }
+      spdlog::trace("MSB of the mask is {0}",msb);
+      if ((1U<< msb) & reg)
+      {
+        res = bitmask(31, msb+1); // set all bits to 1 above the mask
+        res = res | (reg & mask);
+        // it is a negative value. Set the msb in the result
+      }
+      else
+      {
+        // it is a positive value. No need to set the sign bit
+        res = reg;
+      }
+      return res;
+    }
+
   };
 };
 

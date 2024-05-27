@@ -30,25 +30,34 @@ extern "C"
 
 volatile std::atomic<bool> run;
 
-typedef struct mapped_mem
+typedef struct mapped_mem_t
 {
   uintptr_t p_addr;
   uintptr_t v_addr;
-} mapped_mem;
+} mapped_mem_t;
 
-typedef struct cib_mem
+typedef struct cib_mem_t
 {
-  mapped_mem config;
-  mapped_mem gpio_pdts;
-  mapped_mem gpio_align;
-  mapped_mem gpio_laser;
-  mapped_mem gpio_misc;
-  mapped_mem gpio_mon_0;
-  mapped_mem gpio_mon_1;
-} cib_mem;
+//  mapped_mem_t config;
+  mapped_mem_t gpio_pdts;
+  mapped_mem_t gpio_align;
+  mapped_mem_t gpio_laser;
+  mapped_mem_t gpio_misc;
+  mapped_mem_t gpio_mon_0;
+  mapped_mem_t gpio_mon_1;
+  mapped_mem_t gpio_motor_1;
+  mapped_mem_t gpio_motor_2;
+  mapped_mem_t gpio_motor_3;
+} cib_mem_t;
 
+typedef struct motor_t
+{
+  uint16_t index;
+  int32_t pos_i;
+  uint32_t dir;
+} motor_t;
 
-cib_mem g_cib_mem;
+cib_mem_t g_cib_mem;
 cib::i2c::AD5339 *g_dac;
 int g_mem_fd;
 
@@ -76,8 +85,10 @@ int pdts_get_status(uintptr_t &addr, uint16_t &pdts_stat, uint16_t &pdts_addr, u
 int pdts_set_addr(uintptr_t &addr,uint16_t pdts_addr);
 int get_align_laser_state(uintptr_t &addr);
 int test_read_write(uintptr_t &addr_io, uintptr_t &addr_i);
-int set_motor_init_position(uintptr_t addr, uint32_t m1, uint32_t m2, uint32_t m3);
-int get_motor_init_position(uintptr_t addr);
+
+int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3);
+int get_motor_init_position();
+
 int get_align_laser_settings(uintptr_t &addr);
 int set_align_laser_settings(uintptr_t &addr, const uint32_t width, const uint32_t period);
 int get_align_laser_state(uintptr_t &addr);
@@ -95,10 +106,10 @@ int get_dna(uintptr_t &addr1,uintptr_t &addr2);
 
 int run_command(int argc, char** argv);
 void print_help();
-void read_register(mapped_mem &reg);
+void read_register(mapped_mem_t &reg);
 
 
-void read_register(mapped_mem &reg)
+void read_register(mapped_mem_t &reg)
 {
   // reads the input register
   spdlog::info("--> Read register on [0x{0:X}]",reg.p_addr);
@@ -274,17 +285,17 @@ int shutter_get_state(uintptr_t &addr, uint32_t &state)
 int map_memory()
 {
 
-  spdlog::info("Mapping configuration module");
-  g_mem_fd = 0;
-  g_cib_mem.config.p_addr = CONF_MEM_LOW;
-  g_cib_mem.config.v_addr = cib::util::map_phys_mem(g_mem_fd,CONF_MEM_LOW,CONF_MEM_HIGH);
-  //uintptr_t vmem_conf = cib::util::map_phys_mem(g_mem_fd,CONF_MEM_LOW,CONF_MEM_HIGH);
-  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.config.v_addr);
-  if (g_cib_mem.config.v_addr == 0x0)
-  {
-    spdlog::critical("Failed to map configuration memory. This is not going to end well.");
-    return 255;
-  }
+//  spdlog::info("Mapping configuration module");
+//  g_mem_fd = 0;
+//  g_cib_mem.config.p_addr = CONF_MEM_LOW;
+//  g_cib_mem.config.v_addr = cib::util::map_phys_mem(g_mem_fd,CONF_MEM_LOW,CONF_MEM_HIGH);
+//  //uintptr_t vmem_conf = cib::util::map_phys_mem(g_mem_fd,CONF_MEM_LOW,CONF_MEM_HIGH);
+//  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.config.v_addr);
+//  if (g_cib_mem.config.v_addr == 0x0)
+//  {
+//    spdlog::critical("Failed to map configuration memory. This is not going to end well.");
+//    return 255;
+//  }
 
   spdlog::info("Mapping GPIO_PDTS");
   g_cib_mem.gpio_pdts.p_addr = GPIO_PDTS_MEM_LOW;
@@ -342,10 +353,39 @@ int map_memory()
 
   spdlog::info("Mapping GPIO_I_1");
   g_cib_mem.gpio_mon_1.p_addr = GPIO_I_1_MEM_LOW;
-
   g_cib_mem.gpio_mon_1.v_addr = cib::util::map_phys_mem(g_mem_fd,GPIO_I_1_MEM_LOW,GPIO_I_1_MEM_HIGH);
   spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_mon_1.v_addr);
   if (g_cib_mem.gpio_mon_1.v_addr == 0x0)
+  {
+    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    return 255;
+  }
+
+  spdlog::info("Mapping MOTOR_1");
+  g_cib_mem.gpio_motor_1.p_addr = GPIO_MOTOR_1_MEM_LOW;
+  g_cib_mem.gpio_motor_1.v_addr = cib::util::map_phys_mem(g_mem_fd,GPIO_MOTOR_1_MEM_LOW,GPIO_MOTOR_1_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_motor_1.v_addr);
+  if (g_cib_mem.gpio_motor_1.v_addr == 0x0)
+  {
+    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    return 255;
+  }
+
+  spdlog::info("Mapping MOTOR_2");
+  g_cib_mem.gpio_motor_2.p_addr = GPIO_MOTOR_2_MEM_LOW;
+  g_cib_mem.gpio_motor_2.v_addr = cib::util::map_phys_mem(g_mem_fd,GPIO_MOTOR_2_MEM_LOW,GPIO_MOTOR_2_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_motor_2.v_addr);
+  if (g_cib_mem.gpio_motor_2.v_addr == 0x0)
+  {
+    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    return 255;
+  }
+
+  spdlog::info("Mapping MOTOR_3");
+  g_cib_mem.gpio_motor_3.p_addr = GPIO_MOTOR_3_MEM_LOW;
+  g_cib_mem.gpio_motor_3.v_addr = cib::util::map_phys_mem(g_mem_fd,GPIO_MOTOR_3_MEM_LOW,GPIO_MOTOR_3_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_motor_3.v_addr);
+  if (g_cib_mem.gpio_motor_3.v_addr == 0x0)
   {
     spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
     return 255;
@@ -393,6 +433,21 @@ void clear_memory()
   {
     spdlog::error("Failed to unmap mon_1");
   }
+  ret = cib::util::unmap_mem(g_cib_mem.gpio_motor_1.v_addr,PAGE_SIZE);
+  if (ret != 0)
+  {
+    spdlog::error("Failed to unmap motor_1");
+  }
+  ret = cib::util::unmap_mem(g_cib_mem.gpio_motor_2.v_addr,PAGE_SIZE);
+  if (ret != 0)
+  {
+    spdlog::error("Failed to unmap motor_2");
+  }
+  ret = cib::util::unmap_mem(g_cib_mem.gpio_motor_3.v_addr,PAGE_SIZE);
+  if (ret != 0)
+  {
+    spdlog::error("Failed to unmap motor_3");
+  }
   spdlog::info("Destroying the DAC connection");
   delete g_dac;
   g_dac = nullptr;
@@ -425,32 +480,54 @@ int setup_dac(cib::i2c::AD5339 &dac)
 }
 
 // implement soeme extra commands
-int set_motor_init_position(uintptr_t addr, uint32_t m1, uint32_t m2, uint32_t m3)
+int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3)
 {
   spdlog::info("Setting initial position to [RNN800, RNN600, LSTAGE] = ({0}, {1}, {2})",m1,m2,m3);
-  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*1),0,((1<<21)-1));
+  uintptr_t maddr = g_cib_mem.gpio_motor_1.v_addr;
+  uint32_t mask = cib::util::bitmask(20,0);
+  cib::util::reg_write_mask(maddr,m1.pos_i,mask);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
-  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*2),0,((1<<21)-1));
+  maddr = g_cib_mem.gpio_motor_2.v_addr;
+  cib::util::reg_write_mask(maddr,m2.pos_i,mask);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
-  cib::util::reg_write_mask(addr+(CONF_CH_OFFSET*3),0,((1<<21)-1));
+  maddr = g_cib_mem.gpio_motor_3.v_addr;
+  cib::util::reg_write_mask(maddr,m3.pos_i,mask);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
 
 
   // read the register back to be sure
+  uint32_t m1r,m2r,m3r;
+  m1r = cib::util::cast_signed(cib::util::reg_read(g_cib_mem.gpio_motor_1.v_addr), mask);
+  m2r = cib::util::cast_signed(cib::util::reg_read(g_cib_mem.gpio_motor_2.v_addr), mask);
+  m3r = cib::util::cast_signed(cib::util::reg_read(g_cib_mem.gpio_motor_3.v_addr), mask);
   spdlog::info("Position set (readback [{0},{1},{2}])",
-               cib::util::reg_read(addr+(CONF_CH_OFFSET*1)),
-               cib::util::reg_read(addr+(CONF_CH_OFFSET*2)),
-               cib::util::reg_read(addr+(CONF_CH_OFFSET*3)));
+               m1r,m2r,m3r);
   return 0;
 }
 
-int get_motor_init_position(uintptr_t addr)
+int get_motor_init_position()
 {
+  uint32_t mask = cib::util::bitmask(20,0);
+  uint32_t m1r,m2r,m3r;
+  m1r = cib::util::reg_read(g_cib_mem.gpio_motor_1.v_addr);
+  m2r = cib::util::reg_read(g_cib_mem.gpio_motor_2.v_addr);
+  m3r = cib::util::reg_read(g_cib_mem.gpio_motor_3.v_addr);
+
+  int32_t m1pos = cib::util::cast_signed(m1r,mask);
+  int32_t m2pos = cib::util::cast_signed(m2r,mask);
+  int32_t m3pos = cib::util::cast_signed(m3r,mask);
+
   spdlog::info("Getting initial movement position from motors");
-  spdlog::info("Position [RNN800, RNN600, LSTAGE] = [{0},{1},{2}]",
-               cib::util::reg_read(addr+(CONF_CH_OFFSET*1)),
-               cib::util::reg_read(addr+(CONF_CH_OFFSET*2)),
-               cib::util::reg_read(addr+(CONF_CH_OFFSET*3)));
+  spdlog::info("Position [RNN800, RNN600, LSTAGE] = [{0},{1},{2}]",m1pos,m2pos,m3pos);
+
+  // now the directions
+  mask = cib::util::bitmask(31,31);
+  uint32_t m1dir = (m1r & mask) >> 31;
+  uint32_t m2dir = (m1r & mask) >> 31;
+  uint32_t m3dir = (m1r & mask) >> 31;
+  spdlog::info("Getting movement direction from motors (0 : u, 1: d)");
+  spdlog::info("Direction [RNN800, RNN600, LSTAGE] = [{0},{1},{2}]",m1dir,m2dir,m3dir);
+
   return 0;
 }
 
@@ -791,7 +868,7 @@ int run_command(int argc, char** argv)
     if (argc == 1)
     {
       // just want to do a readout
-      res = get_motor_init_position(g_cib_mem.config.v_addr);
+      res = get_motor_init_position();
     }
     if ((argc != 4))
     {
@@ -804,7 +881,12 @@ int run_command(int argc, char** argv)
       int32_t pi2 = std::strtol(argv[2],NULL,0);
       int32_t pi3 = std::strtol(argv[3],NULL,0);
       spdlog::debug("Setting motor init position to [RNN800,RNN600,LSTAGE] = [{0},{1},{2}]",pi1,pi2,pi3);
-      int res = set_motor_init_position(g_cib_mem.config.v_addr,pi1,pi2,pi3);
+      motor_t m1, m2, m3;
+      m1.pos_i = pi1;
+      m2.pos_i = pi2;
+      m3.pos_i = pi3;
+// finish here
+      int res = set_motor_init_position(pi1,pi2,pi3);
     }
     if (res != 0)
     {
