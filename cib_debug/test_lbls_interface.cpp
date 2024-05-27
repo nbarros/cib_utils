@@ -259,7 +259,7 @@ int main(int argc, char** argv)
 #if !defined(VIRTUAL_MODE)
   spdlog::info("Mapping configuration module");
   int memfd = 0;
-  uintptr_t vmem_conf = cib::util::map_phys_mem(memfd,CONF_MEM_LOW,CONF_MEM_HIGH);
+  uintptr_t vmem_conf = cib::util::map_phys_mem(memfd,GPIO_MISC_MEM_LOW,GPIO_MISC_MEM_HIGH);
   spdlog::debug("\nGot address [{:X}]",vmem_conf);
   if (vmem_conf == 0x0)
   {
@@ -272,7 +272,7 @@ int main(int argc, char** argv)
   if (configure(vmem_conf) != 0)
   {
     spdlog::critical("Failed to configure. Bailing out");
-    cib::util::unmap_mem(cib::util::cast_to_void(vmem_conf),(CONF_MEM_HIGH-CONF_MEM_LOW));
+    cib::util::unmap_mem(cib::util::cast_to_void(vmem_conf),(GPIO_MISC_MEM_HIGH-GPIO_MISC_MEM_LOW));
     return 255;
   }
 

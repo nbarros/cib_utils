@@ -154,7 +154,7 @@ namespace cib
     }
 
     // converts a masked unsigned value into a signed
-    int32_t cast_signed(uint32_t reg, uint32_t mask)
+    int32_t cast_to_signed(uint32_t reg, uint32_t mask)
     {
       // first find the msb in the mask. That will be the signed bit
       uint32_t msb = 0;
@@ -178,6 +178,68 @@ namespace cib
       {
         // it is a positive value. No need to set the sign bit
         res = reg;
+      }
+      return res;
+    }
+
+    uint32_t cast_from_signed(int32_t val, uint32_t mask)
+    {
+
+      // first find the msb in the mask. That will be the signed bit
+      uint32_t msb = 0;
+      uint32_t lsb = 0;
+      uint32_t res = 0;
+      for (size_t bit = 31; bit > 0; bit--)
+      {
+        if ((1U << bit) & mask)
+        {
+          msb = bit;
+          break;
+        }
+      }
+      for (size_t bit = 0; bit < 31; bit++)
+      {
+        if ((1U << bit) & mask)
+        {
+          lsb = bit;
+          break;
+        }
+      }
+
+      /*
+       * https://stackoverflow.com/questions/25754082/how-to-take-twos-complement-of-a-byte-in-c
+       *
+        Should be something like
+        if (val > 2**(msb-lsb))
+          res = val;
+          else
+          res = val - 2**(msb-lsb+1);
+
+          reinterpret_cast<uint32_t>(res);
+
+      */
+
+
+      spdlog::trace("MSB and LSB of the mask are {0} {1}",msb,lsb);
+
+      // now define the max and min values that can be generated
+
+      if (val < 0)
+      {
+        // in this case the result is already in 2's complement
+
+        res = bitmask(msb,msb);
+      }
+      if ((1U<< msb) & val)
+      {
+        res = bitmask(31, msb+1); // set all bits to 1 above the mask
+        res = res | (val & mask);
+        // it is a negative value. Set the msb in the result
+      }
+      else
+      {
+        // it is a positive value. No need to set the sign bit
+        res = val;
       }
       return res;
     }

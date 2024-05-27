@@ -397,13 +397,13 @@ int map_memory()
 void clear_memory()
 {
   spdlog::info("Unmapping the register memory");
-  spdlog::debug("* config");
-  int ret = cib::util::unmap_mem(g_cib_mem.config.v_addr,PAGE_SIZE);
-  if (ret != 0)
-  {
-    spdlog::error("Failed to unmap config");
-  }
-  ret = cib::util::unmap_mem(g_cib_mem.gpio_laser.v_addr,PAGE_SIZE);
+//  spdlog::debug("* config");
+//  int ret = cib::util::unmap_mem(g_cib_mem.config.v_addr,PAGE_SIZE);
+//  if (ret != 0)
+//  {
+//    spdlog::error("Failed to unmap config");
+//  }
+  int ret = cib::util::unmap_mem(g_cib_mem.gpio_laser.v_addr,PAGE_SIZE);
   if (ret != 0)
   {
     spdlog::error("Failed to unmap laser");
@@ -482,26 +482,37 @@ int setup_dac(cib::i2c::AD5339 &dac)
 // implement soeme extra commands
 int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3)
 {
-  spdlog::info("Setting initial position to [RNN800, RNN600, LSTAGE] = ({0}, {1}, {2})",m1,m2,m3);
+  spdlog::info("Setting initial position to [RNN800, RNN600, LSTAGE] = ({0}:{1}, {2}:{3}, {4}:{5})",
+               m1.pos_i,m1.dir,m2.pos_i,m2.dir,m3.pos_i,m3.dir);
+  // FIXME: Have to implement a prover conversion using two's complement
   uintptr_t maddr = g_cib_mem.gpio_motor_1.v_addr;
   uint32_t mask = cib::util::bitmask(20,0);
-  cib::util::reg_write_mask(maddr,m1.pos_i,mask);
+  uint32_t reg = m1.dir | cib::util::cast_from_signed(m1.pos_i, mask); // this should be replaced
+  spdlog::debug("Writing M1 register with 0x{0}",reg);
+  cib::util::reg_write(maddr,reg);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
   maddr = g_cib_mem.gpio_motor_2.v_addr;
-  cib::util::reg_write_mask(maddr,m2.pos_i,mask);
+  reg = m2.dir | cib::util::cast_from_signed(m2.pos_i, mask); // this should be replaced
+  spdlog::debug("Writing M2 register with 0x{0}",reg);
+  cib::util::reg_write(maddr,reg);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
   maddr = g_cib_mem.gpio_motor_3.v_addr;
-  cib::util::reg_write_mask(maddr,m3.pos_i,mask);
+  reg = m3.dir | cib::util::cast_from_signed(m3.pos_i, mask); // this should be replaced
+  spdlog::debug("Writing M3 register with 0x{0}",reg);
+  cib::util::reg_write(maddr,reg);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
 
 
   // read the register back to be sure
   uint32_t m1r,m2r,m3r;
-  m1r = cib::util::cast_signed(cib::util::reg_read(g_cib_mem.gpio_motor_1.v_addr), mask);
-  m2r = cib::util::cast_signed(cib::util::reg_read(g_cib_mem.gpio_motor_2.v_addr), mask);
-  m3r = cib::util::cast_signed(cib::util::reg_read(g_cib_mem.gpio_motor_3.v_addr), mask);
+  m1r = cib::util::cast_to_signed(cib::util::reg_read(g_cib_mem.gpio_motor_1.v_addr), mask);
+  m2r = cib::util::cast_to_signed(cib::util::reg_read(g_cib_mem.gpio_motor_2.v_addr), mask);
+  m3r = cib::util::cast_to_signed(cib::util::reg_read(g_cib_mem.gpio_motor_3.v_addr), mask);
   spdlog::info("Position set (readback [{0},{1},{2}])",
                m1r,m2r,m3r);
+
+
+
   return 0;
 }
 
@@ -513,9 +524,9 @@ int get_motor_init_position()
   m2r = cib::util::reg_read(g_cib_mem.gpio_motor_2.v_addr);
   m3r = cib::util::reg_read(g_cib_mem.gpio_motor_3.v_addr);
 
-  int32_t m1pos = cib::util::cast_signed(m1r,mask);
-  int32_t m2pos = cib::util::cast_signed(m2r,mask);
-  int32_t m3pos = cib::util::cast_signed(m3r,mask);
+  int32_t m1pos = cib::util::cast_to_signed(m1r,mask);
+  int32_t m2pos = cib::util::cast_to_signed(m2r,mask);
+  int32_t m3pos = cib::util::cast_to_signed(m3r,mask);
 
   spdlog::info("Getting initial movement position from motors");
   spdlog::info("Position [RNN800, RNN600, LSTAGE] = [{0},{1},{2}]",m1pos,m2pos,m3pos);
@@ -886,7 +897,7 @@ int run_command(int argc, char** argv)
       m2.pos_i = pi2;
       m3.pos_i = pi3;
 // finish here
-      int res = set_motor_init_position(pi1,pi2,pi3);
+      int res = set_motor_init_position(m1,m2,m3);
     }
     if (res != 0)
     {
