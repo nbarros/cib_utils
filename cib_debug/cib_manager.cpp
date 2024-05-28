@@ -668,7 +668,7 @@ int set_laser_fire_state(uintptr_t &addr, uint32_t state)
 
 int set_laser_qswitch_state(uintptr_t &addr, uint32_t state)
 {
-  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*1);
   uint32_t mask = cib::util::bitmask(31,31);
   cib::util::reg_write_mask_offset(maddr,state,mask,31);
   return 0;
@@ -731,6 +731,7 @@ int set_laser_qswitch(uintptr_t &addr, const uint32_t width, const uint32_t dela
   uint32_t mask = cib::util::bitmask(11,0);
   cib::util::reg_write_mask(maddr,width,mask);
 
+  // take care of the delay
   maddr = addr +(GPIO_CH_OFFSET*1);
   mask = cib::util::bitmask(14,0);
   uint32_t d = delay & mask;
