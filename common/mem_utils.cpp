@@ -154,6 +154,7 @@ namespace cib
     }
 
     // converts a masked unsigned value into a signed
+    // the mask is always assumed to start at 0, so the value has to be shifted right until the lsb aligns with 0
     int32_t cast_to_signed(uint32_t reg, uint32_t mask)
     {
       // first find the msb in the mask. That will be the signed bit
@@ -167,9 +168,11 @@ namespace cib
           break;
         }
       }
-      spdlog::trace("MSB of the mask is {0}",msb);
+      spdlog::info("MSB of the mask is {0}",msb);
       if ((1U<< msb) & reg)
       {
+        spdlog::info("MSB of the mask is {0}",msb);
+
         res = bitmask(31, msb+1); // set all bits to 1 above the mask
         res = res | (reg & mask);
         // it is a negative value. Set the msb in the result
@@ -197,14 +200,14 @@ namespace cib
           break;
         }
       }
-      for (size_t bit = 0; bit < 31; bit++)
-      {
-        if ((1U << bit) & mask)
-        {
-          lsb = bit;
-          break;
-        }
-      }
+//      for (size_t bit = 0; bit < 31; bit++)
+//      {
+//        if ((1U << bit) & mask)
+//        {
+//          lsb = bit;
+//          break;
+//        }
+//      }
 
       /*
        * https://stackoverflow.com/questions/25754082/how-to-take-twos-complement-of-a-byte-in-c
@@ -219,7 +222,6 @@ namespace cib
 
       */
 
-
       spdlog::trace("MSB and LSB of the mask are {0} {1}",msb,lsb);
 
       // now define the max and min values that can be generated
@@ -227,19 +229,13 @@ namespace cib
       if (val < 0)
       {
         // in this case the result is already in 2's complement
-
         res = bitmask(msb,msb);
-      }
-      if ((1U<< msb) & val)
-      {
-        res = bitmask(31, msb+1); // set all bits to 1 above the mask
-        res = res | (val & mask);
-        // it is a negative value. Set the msb in the result
+        // now fill the rest of the area in the bitmask
+        res |= (val & bitmask(msb-1,lsb));
       }
       else
       {
-        // it is a positive value. No need to set the sign bit
-        res = val;
+        res = (val & bitmask(msb,lsb));
       }
       return res;
     }

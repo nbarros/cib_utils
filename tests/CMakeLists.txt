@@ -8,3 +8,6 @@ add_executable(test_bitmask EXCLUDE_FROM_ALL test_bitmask.cpp)
 #target_include_directories(dac_ad5339_test PRIVATE ${PROJECT_SOURCE_DIR}/dac)
 #target_link_libraries(dac_ad5339_test i2c)
 
+add_executable(test_signed_casting EXCLUDE_FROM_ALL test_signed_casting.cpp)
+target_link_libraries(test_signed_casting PUBLIC common spdlog::spdlog)
+

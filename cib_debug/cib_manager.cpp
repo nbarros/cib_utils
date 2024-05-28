@@ -484,27 +484,27 @@ int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3)
 {
   spdlog::info("Setting initial position to [RNN800, RNN600, LSTAGE] = ({0}:{1}, {2}:{3}, {4}:{5})",
                m1.pos_i,m1.dir,m2.pos_i,m2.dir,m3.pos_i,m3.dir);
-  // FIXME: Have to implement a prover conversion using two's complement
+
   uintptr_t maddr = g_cib_mem.gpio_motor_1.v_addr;
-  uint32_t mask = cib::util::bitmask(20,0);
-  uint32_t reg = m1.dir | cib::util::cast_from_signed(m1.pos_i, mask); // this should be replaced
+  uint32_t mask = cib::util::bitmask(21,0);
+  uint32_t reg = (m1.dir << 31) | cib::util::cast_from_signed(m1.pos_i, mask); // this should be replaced
   spdlog::debug("Writing M1 register with 0x{0}",reg);
   cib::util::reg_write(maddr,reg);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
   maddr = g_cib_mem.gpio_motor_2.v_addr;
-  reg = m2.dir | cib::util::cast_from_signed(m2.pos_i, mask); // this should be replaced
+  reg = (m2.dir << 31)  | cib::util::cast_from_signed(m2.pos_i, mask); // this should be replaced
   spdlog::debug("Writing M2 register with 0x{0}",reg);
   cib::util::reg_write(maddr,reg);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
   maddr = g_cib_mem.gpio_motor_3.v_addr;
-  reg = m3.dir | cib::util::cast_from_signed(m3.pos_i, mask); // this should be replaced
+  reg = (m3.dir << 31)  | cib::util::cast_from_signed(m3.pos_i, mask); // this should be replaced
   spdlog::debug("Writing M3 register with 0x{0}",reg);
   cib::util::reg_write(maddr,reg);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
 
 
   // read the register back to be sure
-  uint32_t m1r,m2r,m3r;
+  int32_t m1r,m2r,m3r;
   m1r = cib::util::cast_to_signed(cib::util::reg_read(g_cib_mem.gpio_motor_1.v_addr), mask);
   m2r = cib::util::cast_to_signed(cib::util::reg_read(g_cib_mem.gpio_motor_2.v_addr), mask);
   m3r = cib::util::cast_to_signed(cib::util::reg_read(g_cib_mem.gpio_motor_3.v_addr), mask);
@@ -518,7 +518,7 @@ int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3)
 
 int get_motor_init_position()
 {
-  uint32_t mask = cib::util::bitmask(20,0);
+  uint32_t mask = cib::util::bitmask(21,0);
   uint32_t m1r,m2r,m3r;
   m1r = cib::util::reg_read(g_cib_mem.gpio_motor_1.v_addr);
   m2r = cib::util::reg_read(g_cib_mem.gpio_motor_2.v_addr);
