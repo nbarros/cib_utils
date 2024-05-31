@@ -794,9 +794,11 @@ int pdts_reset(uintptr_t &addr)
 int pdts_get_status(uintptr_t &addr, uint16_t &pdts_stat, uint16_t &pdts_addr, uint16_t &pdts_ctl)
 {
   // information in the pdts status register:
-  // [0:3] : status
+  // [0:3]  : status
   // [4:11] : ctrl
-  // [12:27] : address
+  // [5:5]  : dna_addr_done
+  // [6:8]  : padding
+  // [16:31] : address
 
   // first channel of the GPIO is the read one
   uintptr_t memaddr = addr + (GPIO_CH_OFFSET*0);
@@ -811,14 +813,19 @@ int pdts_get_status(uintptr_t &addr, uint16_t &pdts_stat, uint16_t &pdts_addr, u
   pdts_stat = (reg_val & mask);
 
   spdlog::debug("Checking pdts address");
-  mask = cib::util::bitmask(12,27);
-  spdlog::info("PDTS ADDR : 0x{0:X}",((reg_val & mask)>>12));
-  pdts_addr = ((reg_val & mask)>>12);
+  mask = cib::util::bitmask(16,31);
+  spdlog::info("PDTS ADDR : 0x{0:X}",((reg_val & mask)>>16));
+  pdts_addr = ((reg_val & mask)>>16);
 
   spdlog::debug("Checking pdts ctrl register");
   mask = cib::util::bitmask(4,11);
   spdlog::info("PDTS CTRL : 0x{0:X}",((reg_val & mask)>>4));
   pdts_ctl = ((reg_val & mask)>>4);
+
+  spdlog::debug("Checking pdts addr_gen done register");
+  mask = cib::util::bitmask(5,5);
+  spdlog::info("PDTS CTRL : 0x{0:X}",((reg_val & mask)>>5));
+//  pdts_ctl = ((reg_val & mask)>>5);
 
   return 0;
 }
@@ -831,7 +838,13 @@ int pdts_set_addr(uintptr_t &addr,uint16_t pdts_addr)
   uintptr_t memaddr = addr + (GPIO_CH_OFFSET*1);
   spdlog::trace("Setting pdts address in memory address 0x{0:X}",memaddr);
   uint32_t mask = cib::util::bitmask(0,15);
-  cib::util::reg_write_mask(memaddr,pdts_addr,mask);
+  // need to enable the override
+  mask |= cib::util::bitmask(30,30);
+  uint32_t reg = 0x0;
+  reg |= pdts_addr;
+  reg |= cib::util::bitmask(30,30); // enable the user override
+  spdlog::debug("pdts register setting value: 0x{0} (mask {1}) ",reg,cib::util::dump_binary(mask));
+  cib::util::reg_write_mask(memaddr,reg,mask);
 
   // after this we should perhaps sleep for a little and recheck
   spdlog::trace("Resetting the endpoint");
