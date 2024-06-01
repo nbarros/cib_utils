@@ -197,7 +197,7 @@ static void *read_from_fifo_thread_fn(void *data)
     {
       printf("bytes from fifo %ld\n",bytesFifo);
       printf("Read : %s\n\r",buf);
-      fs.write(buf,bytesFifo);
+      fs.write(reinterpret_cast<const char*>(buf),bytesFifo);
 
       //ts = *reinterpret_cast<uint64_t*>(&buf);
       //printf("Read : %" PRIu64 "\n",ts);
