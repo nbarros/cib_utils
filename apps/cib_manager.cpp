@@ -243,6 +243,26 @@ int trigger_pulser_set_state(uintptr_t &addr, uint32_t &state)
   cib::util::reg_write_mask_offset(maddr,state,mask,29);
   return 0;
 }
+int daq_fifo_get_state(uintptr_t &addr, uint32_t &state)
+{
+  spdlog::info("Querying DAQ queue state");
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uint32_t mask = cib::util::bitmask(26,26);
+  uint32_t reg_val = cib::util::reg_read(maddr);
+  state = ((reg_val & mask) >> 26);
+  spdlog::info("STATE : {0}",state);
+  return 0;
+}
+
+int daq_fifo_set_state(uintptr_t &addr, uint32_t &state)
+{
+  spdlog::info("Setting DAQ fifo state to {0}",state);
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uint32_t mask = cib::util::bitmask(26,26);
+  cib::util::reg_write_mask_offset(maddr,state,mask,26);
+  return 0;
+}
+
 int trigger_ext_get_state(uintptr_t &addr, uint32_t &state)
 {
   spdlog::info("Querying ext trigger state");
@@ -1400,6 +1420,35 @@ int run_command(int argc, char** argv)
     }
     return 0;
   }
+  else if (cmd == "daq_enable")
+  {
+    int res = 0;
+    if (argc == 1)
+    {
+      spdlog::info("Checking status of DAQ stream");
+      uint32_t state;
+      res = daq_fifo_get_state(g_cib_mem.gpio_misc.v_addr,state);
+      if (res == 0)
+      {
+        spdlog::info("STATE : {0}",state);
+      }
+    }
+    else if (argc == 2)
+    {
+      uint32_t state = std::strtol(argv[1],NULL,0);
+      spdlog::debug("Setting DAQ stream state to {0}",state);
+      res = daq_fifo_set_state(g_cib_mem.gpio_misc.v_addr,state);
+    }
+    else
+    {
+      spdlog::warn("usage: daq_enable [state] (state: 1(ON), 0(OFF)");
+    }
+    if (res != 0)
+    {
+      spdlog::error("Failed to execute command");
+    }
+    return 0;
+  }
   else if (cmd == "dna")
   {
     spdlog::debug("Getting DNA");
@@ -1439,6 +1488,18 @@ int run_command(int argc, char** argv)
       {
         read_register(g_cib_mem.gpio_mon_1);
       }
+      else if (scmd == "motor_1")
+      {
+        read_register(g_cib_mem.gpio_motor_1);
+      }
+      else if (scmd == "motor_2")
+      {
+        read_register(g_cib_mem.gpio_motor_2);
+      }
+      else if (scmd == "motor_3")
+      {
+        read_register(g_cib_mem.gpio_motor_3);
+      }
       else
       {
         spdlog::error("Unknown register");
@@ -1468,6 +1529,8 @@ void print_help()
   spdlog::info("    Enable external trigger connected on the SI1");
   spdlog::info("  pulse_trigger_enable [state]");
   spdlog::info("    Enable pulser 10 Hz pulser trigger");
+  spdlog::info("  daq_enable [state]");
+  spdlog::info("    Enable DAQ trigger stream");
   spdlog::info("  sys_reset");
   spdlog::info("    Resets everything that is not on the PDTS system");
   spdlog::info("  pdts_reset");
