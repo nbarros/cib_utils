@@ -231,8 +231,8 @@ static void display_help(char * progName)
   printf("Usage : %s [OPTIONS]\n"
       "\n"
       "  -h, --help     Print this menu\n"
-      "  -t, --devTx    Device to use ... /dev/axis_fifo_0x43c10000\n"
-      "  -r, --devRx    Device to use ... /dev/axis_fifo_0x43c10000\n"
+      "  -t, --devTx    Device to use ... /dev/axis_fifo_0x00000000a0000000\n"
+      "  -r, --devRx    Device to use ... /dev/axis_fifo_0x00000000a0000000\n"
       ,
       progName
   );
