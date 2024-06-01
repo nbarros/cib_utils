@@ -163,8 +163,8 @@ int get_dna(uintptr_t &addr1, uintptr_t &addr2)
   maddr = addr2 +(GPIO_CH_OFFSET*0);
   uint32_t word2 = cib::util::reg_read(maddr);
 
-  spdlog::info("DNA : 0x{2:X} 0x{1:X} 0x{1:X}",word0,word1,word2);
-  spdlog::info("DNA (full) : 0x{2:X}{1:X}{1:X}",word0,word1,word2);
+  spdlog::info("DNA : 0x{2:X} 0x{1:X} 0x{0:X}",word0,word1,word2);
+  spdlog::info("DNA (full) : 0x{2:X}{1:X}{0:X}",word0,word1,word2);
   return 0;
 }
 
