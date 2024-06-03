@@ -8,7 +8,7 @@ project (cib_tools
 add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
 # Do not request this. Instead use the one out of contrib
-#find_package(spdlog REQUIRED)
+find_package(spdlog REQUIRED)
 
 include_directories(BEFORE ${PROJECT_SOURCE_DIR}/common)
 include_directories(${PROJECT_SOURCE_DIR}/contrib/spdlog/include)
@@ -20,8 +20,8 @@ target_compile_features(common PUBLIC cxx_std_11)
 set_target_properties(common PROPERTIES CXX_STANDARD_REQUIRED ON)
 set_target_properties(common PROPERTIES CXX_EXTENSIONS OFF)
 
-set(SPDLOG_BUILD_PIC ON CACHE BOOL "enable spdlog PIC code")
-add_subdirectory(contrib/spdlog)
+#set(SPDLOG_BUILD_PIC ON CACHE BOOL "enable spdlog PIC code")
+#add_subdirectory(contrib/spdlog)
 # do not compile 
 #add_subdirectory(contrib/cppzmq)
 
