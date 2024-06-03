@@ -1569,6 +1569,10 @@ int main(int argc, char** argv)
         return 1;
       }
   }
+  if (report_level != SPDLOG_LEVEL_INFO)
+  {
+    spdlog::set_level(report_level); // Set global log level to info
+  }
 
   spdlog::info("Log level: {0} : {1}",static_cast<int>(spdlog::get_level()),spdlog::level::to_string_view(spdlog::get_level()).data());
   spdlog::trace("Just testing a trace");
