@@ -39,7 +39,8 @@
 
 //#define printf(fmt, ...) printf("DEBUG %s:%d(): " fmt,  __func__, __LINE__, ##__VA_ARGS__)
 
-struct thread_data {
+struct thread_data
+{
   int rc;
 };
 
@@ -182,20 +183,32 @@ static void *read_from_fifo_thread_fn(void *data)
   int packets_rx;
   uint8_t buf[MAX_BUF_SIZE_BYTES];
   uint64_t ts;
+  uint32_t occupancy;
   /* shup up compiler */
   (void)data;
   std::ofstream fs("trigger_dump.bin", std::ios::out | std::ios::binary | std::ios::app);
 
   packets_rx = 0;
 
-  printf("Looping\n");
+  printf("Checking current occupancy: \n");
+  int rc = ioctl(readFifoFd,AXIS_FIFO_GET_RX_OCCUPANCY,occupancy);
+  if (rc)
+  {
+    perror("IOCTL failure checking occupancy\n");
+  }
+  else
+  {
+    printf("Claimed FIFO occupancy: %u\n",occupancy);
+  }
+
+  printf("Entering loop \n");
 
   while (running)
   {
     bytesFifo = read(readFifoFd, buf, MAX_BUF_SIZE_BYTES);
     if (bytesFifo > 0)
     {
-      printf("bytes from fifo %ld\n",bytesFifo);
+      printf("Read bytes from fifo %ld\n",bytesFifo);
       printf("Read : %s\n\r",buf);
       fs.write(reinterpret_cast<const char*>(buf),bytesFifo);
 
@@ -207,7 +220,6 @@ static void *read_from_fifo_thread_fn(void *data)
   }
   fs.close();
   printf("Out of loop\n");
-
 
   return (void *)0;
 }

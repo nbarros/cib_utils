@@ -793,8 +793,8 @@ int pdts_get_status(uintptr_t &addr, uint16_t &pdts_stat, uint16_t &pdts_addr, u
   // information in the pdts status register:
   // [0:3]  : status
   // [4:11] : ctrl
-  // [5:5]  : dna_addr_done
-  // [6:8]  : padding
+  // [12:12]  : dna_addr_done
+  // [13:15]  : padding
   // [16:31] : address
 
   // first channel of the GPIO is the read one
@@ -820,8 +820,8 @@ int pdts_get_status(uintptr_t &addr, uint16_t &pdts_stat, uint16_t &pdts_addr, u
   pdts_ctl = ((reg_val & mask)>>4);
 
   spdlog::debug("Checking pdts addr_gen done register");
-  mask = cib::util::bitmask(5,5);
-  spdlog::info("PDTS CTRL : 0x{0:X}",((reg_val & mask)>>5));
+  mask = cib::util::bitmask(12,12);
+  spdlog::info("PDTS ADDR DONE : 0x{0:X}",((reg_val & mask)>>12));
 //  pdts_ctl = ((reg_val & mask)>>5);
 
   return 0;
