@@ -33,6 +33,7 @@
 #include <cstdint>
 #include <iostream>
 #include <cib_mem.h>
+#include <mem_utils.h>
 
 /*----------------------------------------------------------------------------
  * Internal Definitions
@@ -47,6 +48,35 @@ struct thread_data
 {
   int rc;
 };
+
+
+typedef struct daq_trigger_t
+{
+  // lsb
+  uint32_t pos_m3 : 17;
+  uint32_t pos_m2_lsb : 15;
+  uint32_t pos_m2_msb : 7;
+  uint32_t pos_m1 : 22;
+  uint32_t padding : 3;
+  uint64_t timestamp;
+  // msb
+  static const uint32_t mask_m3 = 0x1FFFF;
+  static const uint32_t mask_m2_1 = 0xFFFE0000;
+  static const uint32_t mask_m2_2 = 0x7F;
+  static const uint32_t mask_m1 = 0x1FFFFF80;
+
+
+  int32_t get_pos_m1() {return cib::util::cast_to_signed(pos_m1,mask_m1);}
+  int32_t get_pos_m3() {return cib::util::cast_to_signed(pos_m3,mask_m3);}
+  int32_t get_pos_m2()
+  {
+    uint32_t m2_lsb = pos_m2_lsb;
+    uint32_t m2_msb = pos_m2_msb;
+    uint32_t m2 = (m2_msb << 7) | pos_m2_lsb;
+    return cib::util::cast_to_signed(pos_m3,mask_m3);
+  }
+} daq_trigger_t;
+
 
 //pthread_t write_to_fifo_thread;
 pthread_t read_from_fifo_thread;
@@ -188,6 +218,7 @@ static void *read_from_fifo_thread_fn(void *data)
   uint32_t occupancy;
   /* shup up compiler */
   (void)data;
+  daq_trigger_t *word;
 
   std::ostringstream fname("");
   std::time_t result = std::time(nullptr);
@@ -216,9 +247,12 @@ static void *read_from_fifo_thread_fn(void *data)
     if (bytesFifo > 0)
     {
       printf("Read bytes from fifo %ld\n",bytesFifo);
+
       //printf("Read : %s\n\r",buf);
       fs.write(reinterpret_cast<const char*>(buf),bytesFifo);
 
+      word = reinterpret_cast<daq_trigger_t*>(buf);
+      printf("TS %" PRIu64 " m1 %i m2 %i m3 %i",word->timestamp, word->get_pos_m1(), word->get_pos_m2(), word->get_pos_m3());
       //ts = *reinterpret_cast<uint64_t*>(&buf);
       //printf("Read : %" PRIu64 "\n",ts);
 
