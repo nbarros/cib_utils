@@ -84,17 +84,11 @@ typedef struct daq_trigger_t
 pthread_t read_from_fifo_thread;
 
 static volatile bool running = true;
-static char _opt_dev_tx[255];
 static char _opt_dev_rx[255];
-static int writeFifoFd;
 static int readFifoFd;
 
 static void signal_handler(int signal);
 static void *read_from_fifo_thread_fn(void *data);
-static int process_options(int argc, char * argv[]);
-static void print_opts();
-static void display_help(char * progName);
-static void *write_to_fifo_thread_fn(void *data);
 static void quit(void);
 
 /*----------------------------------------------------------------------------
@@ -102,7 +96,7 @@ static void quit(void);
  *----------------------------------------------------------------------------*/
 int main(int argc, char **argv)
 {
-  process_options(argc, argv);
+  //process_options(argc, argv);
   daq_trigger_t word;
   printf("Size of a trigger word %lu\n",sizeof(daq_trigger_t));
   int rc;
@@ -169,48 +163,6 @@ static void quit(void)
   running = false;
 }
 
-static void *write_to_fifo_thread_fn(void *data)
-{
-  int rc;
-  int packets_tx;
-  ssize_t bytesFifo;
-  char buf[MAX_BUF_SIZE_BYTES];
-  uint32_t vacancy;
-
-  /* shup up compiler */
-  (void)data;
-
-  packets_tx = 0;
-
-  while (running)
-  {
-    do {
-      rc = ioctl(writeFifoFd, AXIS_FIFO_GET_TX_VACANCY, &vacancy);
-      if (rc) {
-        perror("ioctl");
-        return (void *)0;
-      }
-      if (vacancy < (uint32_t)MAX_BUF_SIZE_BYTES)
-        usleep(100);
-    } while (vacancy < (uint32_t)MAX_BUF_SIZE_BYTES);
-
-    printf("Send a message to %s : ",_opt_dev_tx);
-    scanf("%s",&buf[0]);
-    printf("Sending %s\n\r",buf);
-
-    bytesFifo = write(writeFifoFd, buf, strlen(buf));
-    if (bytesFifo > 0) {
-      printf("bytes to fifo %ld\n",bytesFifo);
-      packets_tx++;
-    } else {
-      perror("write");
-      quit();
-    }
-  }
-
-  return (void *)0;
-}
-
 static void *read_from_fifo_thread_fn(void *data)
 {
   ssize_t bytesFifo;
@@ -254,7 +206,8 @@ static void *read_from_fifo_thread_fn(void *data)
       fs.write(reinterpret_cast<const char*>(buf),bytesFifo);
 
       word = reinterpret_cast<daq_trigger_t*>(buf);
-      printf("TS %" PRIu64 " m1 %i m2 %i m3 %i",word->timestamp, word->get_pos_m1(), word->get_pos_m2(), word->get_pos_m3());
+      printf("TS %" PRIu64 " m1 %i m2 %i m3 %i \n"
+             ,word->timestamp, word->get_pos_m1(), word->get_pos_m2(), word->get_pos_m3());
       //ts = *reinterpret_cast<uint64_t*>(&buf);
       //printf("Read : %" PRIu64 "\n",ts);
 
@@ -306,70 +259,4 @@ static void signal_handler(int signal)
     default:
       break;
   }
-}
-
-static void display_help(char * progName)
-{
-  printf("Usage : %s [OPTIONS]\n"
-      "\n"
-      "  -h, --help     Print this menu\n"
-      "  -t, --devTx    Device to use ... /dev/axis_fifo_0x00000000a0000000\n"
-      "  -r, --devRx    Device to use ... /dev/axis_fifo_0x00000000a0000000\n"
-      ,
-      progName
-  );
-}
-
-static void print_opts()
-{
-  printf("Options : \n"
-      "DevTX          : %s\n"
-      "DevRx          : %s\n"
-      ,
-      _opt_dev_tx,
-      _opt_dev_rx
-  );
-}
-
-static int process_options(int argc, char * argv[])
-{
-  strcpy(_opt_dev_tx,DEF_DEV_TX);
-  strcpy(_opt_dev_rx,DEF_DEV_RX);
-
-  for (;;) {
-    int option_index = 0;
-    static const char *short_options = "hr:t:";
-    static const struct option long_options[] = {
-        {"help", no_argument, 0, 'h'},
-        {"devRx", required_argument, 0, 'r'},
-        {"devTx", required_argument, 0, 't'},
-        {0,0,0,0},
-    };
-
-    int c = getopt_long(argc, argv, short_options,
-                        long_options, &option_index);
-
-    if (c == EOF) {
-      break;
-    }
-
-    switch (c) {
-      case 't':
-        strcpy(_opt_dev_tx, optarg);
-        break;
-
-      case 'r':
-        strcpy(_opt_dev_rx, optarg);
-        break;
-
-      default:
-      case 'h':
-        display_help(argv[0]);
-        exit(0);
-        break;
-    }
-  }
-
-  print_opts();
-  return 0;
 }
