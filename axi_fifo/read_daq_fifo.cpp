@@ -231,7 +231,7 @@ static void *read_from_fifo_thread_fn(void *data)
   printf("Closing file \n");
   fs.close();
   std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
-  double data_rate = static_cast<double>(packets_rx)/static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
+  double data_rate = static_cast<double>(packets_rx)/static_cast<double>(std::chrono::duration_cast<std::chrono::seconds>(end - begin).count());
   std::cout << "Word frequency : " << data_rate << " Hz" <<std::endl;
 
   printf("Querying some transfer information\n");
