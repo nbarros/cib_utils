@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.2)
 
 # Set some basic project attributes
 project (cib_tools
-	VERSION 0.1
-	DESCRIPTION "A Hello World Project")
+	VERSION 1.0
+	DESCRIPTION "CIB Utilities Project")
 
 add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
@@ -11,7 +11,6 @@ add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 find_package(spdlog REQUIRED)
 
 include_directories(BEFORE ${PROJECT_SOURCE_DIR}/common)
-include_directories(${PROJECT_SOURCE_DIR}/contrib/spdlog/include)
 include_directories(BEFORE ${PROJECT_SOURCE_DIR}/contrib/cppzmq)
 
 file(GLOB COMMON_SRC_FILES ${PROJECT_SOURCE_DIR}/common/*.cpp)
@@ -24,6 +23,7 @@ set_target_properties(common PROPERTIES CXX_EXTENSIONS OFF)
 #add_subdirectory(contrib/spdlog)
 # do not compile 
 #add_subdirectory(contrib/cppzmq)
+#include_directories(${PROJECT_SOURCE_DIR}/contrib/spdlog/include)
 
 add_subdirectory(versaclock)
 add_subdirectory(pdts)

@@ -51,4 +51,20 @@
 
 #define PAGE_SIZE     4096
 
+typedef struct daq_trigger_t
+{
+  // lsb
+  uint32_t pos_m3 : 17;
+  uint32_t pos_m2_lsb : 15;
+  uint32_t pos_m2_msb : 7;
+  uint32_t pos_m1 : 22;
+  uint64_t timestamp;
+  // msb
+  static const uint32_t mask_m3 = 0x1FFFF;
+  static const uint32_t mask_m2_1 = 0xFFFE0000;
+  static const uint32_t mask_m2_2 = 0x1FFFF;
+  static const uint32_t mask_m1 = 0x1FFFF;
+  //int32_t get_pos_m1() {return cib::util::cast_to_signed(pos_m1,mask_m1);}
+} daq_trigger_t;
+
 #endif /* COMMON_CIB_MEM_H_ */

@@ -1496,8 +1496,9 @@ int run_command(int argc, char** argv)
 void print_help()
 {
   spdlog::info("Available commands (note, commands without arguments print current settings):");
-  spdlog::info("  dna");
-  spdlog::info("    Obtain the DNA value from the FPGA silicon.");
+  // NFB: This command is no longer available for releases above v09-00
+  //  spdlog::info("  dna");
+  //  spdlog::info("    Obtain the DNA value from the FPGA silicon.");
   spdlog::info("  dac [subcmd [subcmd_args]]");
   spdlog::info("    Operates the DAC. Available subcommands:");
   spdlog::info("      set <dac_level> (value between 0 and 4095)");
