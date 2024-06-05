@@ -86,6 +86,7 @@ int shutter_set_state(uintptr_t &addr, uint32_t &state);
 int shutter_get_state(uintptr_t &addr, uint32_t &state);
 // pdts
 int pdts_reset(uintptr_t &addr);
+int pdts_reset_domain(uintptr_t &addr);
 int pdts_get_status(uintptr_t &addr, uint16_t &pdts_stat, uint16_t &pdts_addr, uint16_t &pdts_ctl);
 int pdts_set_addr(uintptr_t &addr,uint16_t pdts_addr);
 // alignment laser
@@ -787,6 +788,20 @@ int pdts_reset(uintptr_t &addr)
   return 0;
 }
 
+int pdts_reset_domain(uintptr_t &addr)
+{
+  spdlog::info("Resetting PDTS domain");
+  uintptr_t memaddr = addr+(GPIO_CH_OFFSET*1);
+  uint32_t mask = cib::util::bitmask(29,29);
+  spdlog::trace("Setting reset high");
+  cib::util::reg_write_mask_offset(memaddr,0x1,mask,29);
+  spdlog::trace("Sleeping for 10 us");
+  std::this_thread::sleep_for(std::chrono::microseconds(10));
+  spdlog::trace("Setting reset low");
+  cib::util::reg_write_mask_offset(memaddr,0x0,mask,29);
+  return 0;
+}
+
 
 int pdts_get_status(uintptr_t &addr, uint16_t &pdts_stat, uint16_t &pdts_addr, uint16_t &pdts_ctl)
 {
@@ -1235,6 +1250,16 @@ int run_command(int argc, char** argv)
     }
     return 0;
   }
+  else if (cmd == "pdts_reset_domain")
+  {
+    spdlog::info("Resetting the PDTS timing domain");
+    int res = pdts_reset_domain(g_cib_mem.gpio_pdts.v_addr);
+    if (res != 0)
+    {
+      spdlog::error("Failed to reset PDTS domain");
+    }
+    return 0;
+  }
   else if (cmd == "sys_reset")
   {
     spdlog::info("Resetting the data queues");
@@ -1513,6 +1538,8 @@ void print_help()
   spdlog::info("    Resets everything that is not on the PDTS system");
   spdlog::info("  pdts_reset");
   spdlog::info("    Resets the PDTS system");
+  spdlog::info("  pdts_reset_domain");
+  spdlog::info("    Resets the PDTS timing domain IPs (but not the system)");
   spdlog::info("  pdts [addr <addr>]");
   spdlog::info("    Gets the current state of the PDTS system");
   spdlog::info("  lbls [state <state>] [width <width>]");
