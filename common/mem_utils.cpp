@@ -168,10 +168,10 @@ namespace cib
           break;
         }
       }
-      spdlog::info("MSB of the mask is {0}",msb);
+      //spdlog::trace("MSB of the mask is {0}",msb);
       if ((1U<< msb) & reg)
       {
-        spdlog::info("MSB of the mask is {0}",msb);
+        //spdlog::trace("MSB of the mask is {0}",msb);
 
         res = bitmask(31, msb+1); // set all bits to 1 above the mask
         res = res | (reg & mask);
