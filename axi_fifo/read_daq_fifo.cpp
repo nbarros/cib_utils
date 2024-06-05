@@ -38,11 +38,8 @@
 /*----------------------------------------------------------------------------
  * Internal Definitions
  *----------------------------------------------------------------------------*/
-#define DEF_DEV_TX "/dev/axis_fifo_0x00000000a0000000"
 #define DEF_DEV_RX "/dev/axis_fifo_0x00000000a0000000"
 #define MAX_BUF_SIZE_BYTES 1450
-
-//#define printf(fmt, ...) printf("DEBUG %s:%d(): " fmt,  __func__, __LINE__, ##__VA_ARGS__)
 
 struct thread_data
 {
@@ -50,7 +47,7 @@ struct thread_data
 };
 
 
-typedef struct daq_trigger_t
+typedef struct iols_trigger_t
 {
   // lsb
   uint32_t pos_m3 : 17;
@@ -77,28 +74,24 @@ typedef struct daq_trigger_t
     // the bitmask is the same
     return cib::util::cast_to_signed(m2,bitmask_m1);
   }
-} daq_trigger_t;
+} iols_trigger_t;
 
 
-//pthread_t write_to_fifo_thread;
 pthread_t read_from_fifo_thread;
 
 static volatile bool running = true;
-static char _opt_dev_rx[255];
 static int readFifoFd;
 
 static void signal_handler(int signal);
 static void *read_from_fifo_thread_fn(void *data);
-static void quit(void);
 
 /*----------------------------------------------------------------------------
  * Main
  *----------------------------------------------------------------------------*/
 int main(int argc, char **argv)
 {
-  //process_options(argc, argv);
-  daq_trigger_t word;
-  printf("Size of a trigger word %lu\n",sizeof(daq_trigger_t));
+  iols_trigger_t word;
+  printf("Size of a trigger word %lu\n",sizeof(iols_trigger_t));
   int rc;
 
   // Listen to ctrl+c and assert
@@ -109,7 +102,7 @@ int main(int argc, char **argv)
   /*************/
   /* open FIFO */
   /*************/
-  readFifoFd = open(_opt_dev_rx, O_RDONLY | O_NONBLOCK);
+  readFifoFd = open(DEF_DEV_RX, O_RDONLY | O_NONBLOCK);
   if (readFifoFd < 0)
   {
     printf("Open read failed with error: %s\n", strerror(errno));
@@ -135,12 +128,9 @@ int main(int argc, char **argv)
   /* start threads */
   /*****************/
 
-  /* start thread listening for ethernet packets */
-  //    rc = pthread_create(&write_to_fifo_thread, NULL, write_to_fifo_thread_fn,
-  //            (void *)NULL);
 
   /* start thread listening for fifo receive packets */
-  printf("Thread\n");
+  printf("Init rx thread\n");
 
   rc = pthread_create(&read_from_fifo_thread, NULL, read_from_fifo_thread_fn,(void *)NULL);
 
@@ -151,16 +141,9 @@ int main(int argc, char **argv)
   }
 
   printf("SHUTTING DOWN\n");
-  //    pthread_join(write_to_fifo_thread, NULL);
   pthread_join(read_from_fifo_thread, NULL);
-  //    close(writeFifoFd);
   close(readFifoFd);
   return rc;
-}
-
-static void quit(void)
-{
-  running = false;
 }
 
 static void *read_from_fifo_thread_fn(void *data)
@@ -172,7 +155,7 @@ static void *read_from_fifo_thread_fn(void *data)
   uint32_t occupancy;
   /* shup up compiler */
   (void)data;
-  daq_trigger_t *word;
+  iols_trigger_t *word;
 
   std::ostringstream fname("");
   std::time_t result = std::time(nullptr);
@@ -202,22 +185,21 @@ static void *read_from_fifo_thread_fn(void *data)
     {
       printf("Read bytes from fifo %ld\n",bytesFifo);
 
-      //printf("Read : %s\n\r",buf);
       fs.write(reinterpret_cast<const char*>(buf),bytesFifo);
 
-      word = reinterpret_cast<daq_trigger_t*>(buf);
+      // fun fact: by casting to the structure, we no longer need any care about byte order
+      word = reinterpret_cast<iols_trigger_t*>(buf);
       printf("TS %" PRIu64 " m1 %i m2 %i m3 %i \n"
-             ,word->timestamp, word->get_pos_m1(), word->get_pos_m2(), word->get_pos_m3());
-      //ts = *reinterpret_cast<uint64_t*>(&buf);
-      //printf("Read : %" PRIu64 "\n",ts);
+             ,word->timestamp
+             ,word->get_pos_m1(), word->get_pos_m2(), word->get_pos_m3());
 
       packets_rx++;
     }
   }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
-  printf("Out of loop\n");
-  printf("Closing file \n");
+  printf("Stepped out of the loop\n");
+  printf("Closing the local output file \n");
   fs.close();
   std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
   double data_rate = static_cast<double>(packets_rx)/static_cast<double>(std::chrono::duration_cast<std::chrono::seconds>(end - begin).count());
@@ -243,7 +225,6 @@ static void *read_from_fifo_thread_fn(void *data)
   {
     printf("FIFO bytes read: %u\n",bytes_read);
   }
-
   return (void *)0;
 }
 

@@ -222,7 +222,7 @@ namespace cib
 
       */
 
-      spdlog::trace("MSB and LSB of the mask are {0} {1}",msb,lsb);
+      //spdlog::trace("MSB and LSB of the mask are {0} {1}",msb,lsb);
 
       // now define the max and min values that can be generated
 
