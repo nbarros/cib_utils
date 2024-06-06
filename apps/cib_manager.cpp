@@ -548,8 +548,8 @@ int motor_init_limits()
   cib::limits::m_limits.m3_max = 28967;
   cib::limits::m_limits.m2_min = -580000;
   cib::limits::m_limits.m2_max = 580000;
-  cib::limits::m_limits.m3_min = -580000;
-  cib::limits::m_limits.m3_max = 580000;
+  cib::limits::m_limits.m1_min = -580000;
+  cib::limits::m_limits.m1_max = 580000;
 
   return 0;
 }
