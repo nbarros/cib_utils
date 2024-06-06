@@ -180,8 +180,9 @@ namespace cib
       }
       else
       {
-        // it is a positive value. No need to set the sign bit
-        res = reg;
+        // it is a positive value. No need to set the sign bit, but still need to
+        // apply the mask or we're carrying out the other bits that may be outside the mask
+        res = (reg & mask);
       }
       return res;
     }
