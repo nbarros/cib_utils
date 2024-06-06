@@ -26,36 +26,14 @@ extern "C"
 };
 
 #include <cib_mem.h>
+#include <cib_data_fmt.h>
 #include <AD5339.h>
 
 volatile std::atomic<bool> run;
 
-typedef struct mapped_mem_t
-{
-  uintptr_t p_addr;
-  uintptr_t v_addr;
-} mapped_mem_t;
-
-typedef struct cib_mem_t
-{
-//  mapped_mem_t config;
-  mapped_mem_t gpio_pdts;
-  mapped_mem_t gpio_align;
-  mapped_mem_t gpio_laser;
-  mapped_mem_t gpio_misc;
-  mapped_mem_t gpio_mon_0;
-  mapped_mem_t gpio_mon_1;
-  mapped_mem_t gpio_motor_1;
-  mapped_mem_t gpio_motor_2;
-  mapped_mem_t gpio_motor_3;
-} cib_mem_t;
-
-typedef struct motor_t
-{
-  uint16_t index;
-  int32_t pos_i;
-  uint32_t dir;
-} motor_t;
+using cib::cib_mem_t;
+using cib::mapped_mem_t;
+using cib::motor_t;
 
 cib_mem_t g_cib_mem;
 cib::i2c::AD5339 *g_dac;
@@ -92,9 +70,11 @@ int pdts_set_addr(uintptr_t &addr,uint16_t pdts_addr);
 // alignment laser
 int get_align_laser_state(uintptr_t &addr);
 
+// motor
+int motor_init_limits();
 int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3);
 int get_motor_init_position();
-
+int motor_extract_info(const char *arg, int32_t &pos, uint32_t &dir);
 int get_align_laser_settings(uintptr_t &addr);
 int set_align_laser_settings(uintptr_t &addr, const uint32_t width, const uint32_t period);
 int get_align_laser_state(uintptr_t &addr);
@@ -477,11 +457,30 @@ int setup_dac(cib::i2c::AD5339 &dac)
   return CIB_I2C_OK;
 }
 
+
 // implement soeme extra commands
 int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3)
 {
   spdlog::info("Setting initial position to [RNN800, RNN600, LSTAGE] = ({0}:{1}, {2}:{3}, {4}:{5})",
                m1.pos_i,m1.dir,m2.pos_i,m2.dir,m3.pos_i,m3.dir);
+
+  if ((m1.pos_i < cib::limits::m_limits.m1_min) || (m1.pos_i > cib::limits::m_limits.m1_max))
+  {
+    spdlog::error("Requested RNN800/TSTAGE position out of range [{0};{1}]",cib::limits::m_limits.m1_min,cib::limits::m_limits.m1_max);
+    return 1;
+  }
+  if ((m2.pos_i < cib::limits::m_limits.m2_min) || (m2.pos_i > cib::limits::m_limits.m2_max))
+  {
+    spdlog::error("Requested RNN600 position out of range [{0};{1}]",cib::limits::m_limits.m2_min,cib::limits::m_limits.m2_max);
+    return 1;
+  }
+
+  if ((m3.pos_i < cib::limits::m_limits.m3_min) || (m3.pos_i > cib::limits::m_limits.m3_max))
+  {
+    spdlog::error("Requested LSTAGE position out of range [{0};{1}]",cib::limits::m_limits.m3_min,cib::limits::m_limits.m3_max);
+    return 1;
+  }
+
 
   uintptr_t maddr = g_cib_mem.gpio_motor_1.v_addr;
   uint32_t mask = cib::util::bitmask(21,0);
@@ -495,6 +494,7 @@ int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3)
   cib::util::reg_write(maddr,reg);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
   maddr = g_cib_mem.gpio_motor_3.v_addr;
+  mask = cib::util::bitmask(16,0);
   reg = (m3.dir << 31)  | cib::util::cast_from_signed(m3.pos_i, mask); // this should be replaced
   spdlog::debug("Writing M3 register with 0x{0}",reg);
   cib::util::reg_write(maddr,reg);
@@ -510,9 +510,9 @@ int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3)
                m1r,m2r,m3r);
 
 
-
   return 0;
 }
+
 
 int get_motor_init_position()
 {
@@ -540,6 +540,45 @@ int get_motor_init_position()
   return 0;
 }
 
+int motor_init_limits()
+{
+  // limits from https://docs.google.com/spreadsheets/d/100HDufZ39EIJtkl2HsLmL_xbE8cTSIuBd_5BsyRRMto/edit?usp=sharing
+  cib::limits::m_limits.m3_min = -3001;
+  cib::limits::m_limits.m3_max = 28967;
+  cib::limits::m_limits.m2_min = -580000;
+  cib::limits::m_limits.m2_max = 580000;
+  cib::limits::m_limits.m3_min = -580000;
+  cib::limits::m_limits.m3_max = 580000;
+
+  return 0;
+}
+
+int motor_extract_info(const char *arg, int32_t &pos, uint32_t &dir)
+{
+  // first grab the last char of the arg
+  std::string str(arg);
+  if (str.rbegin() == 'u')
+  {
+    dir = 1;
+  }
+  else if (str.rbegin() == 'd')
+  {
+    dir = 0;
+  }
+  else
+  {
+    spdlog::error("Unknown direction setting [{0}]",str[0]);
+    return 1;
+  }
+
+  // eliminate the last char
+  str.pop_back();
+
+  spdlog::debug("Extracted pos {0} dir {1} (1=u; 0=d)",pos,dir);
+  pos = std::strtol(str.c_str(),NULL,0);
+
+  return 0;
+}
 
 int get_align_laser_settings(uintptr_t &addr)
 {
@@ -909,20 +948,45 @@ int run_command(int argc, char** argv)
     }
     if ((argc != 4))
     {
-      spdlog::warn("usage: motor_init [pi1 pi2 pi3]");
+      spdlog::warn("usage: motor_init [pi1<dir> pi2<dir> pi3<dir>] (<dir> is 'u' (increasing step) or 'd' (decreasing step)");
       return 0;
     }
     else
     {
-      int32_t pi1 = std::strtol(argv[1],NULL,0);
-      int32_t pi2 = std::strtol(argv[2],NULL,0);
-      int32_t pi3 = std::strtol(argv[3],NULL,0);
-      spdlog::debug("Setting motor init position to [RNN800,RNN600,LSTAGE] = [{0},{1},{2}]",pi1,pi2,pi3);
+      uint32_t d1,d2,d3;
+      int32_t p1, p2, p3;
+
+      res = motor_extract_info(argv[1], p1,d1);
+      if (res != 0)
+      {
+        spdlog::error("Failed to RNN800/TSTAGE init settings");
+        spdlog::warn("usage: motor_init [pi1<dir> pi2<dir> pi3<dir>] (<dir> is 'u' (increasing step) or 'd' (decreasing step)");
+        return 0;
+      }
+      res = motor_extract_info(argv[2], p2,d2);
+      if (res != 0)
+      {
+        spdlog::error("Failed to get RNN600 init settings");
+        spdlog::warn("usage: motor_init [pi1<dir> pi2<dir> pi3<dir>] (<dir> is 'u' (increasing step) or 'd' (decreasing step)");
+        return 0;
+      }
+      res = motor_extract_info(argv[3], p3,d3);
+      if (res != 0)
+      {
+        spdlog::error("Failed to get RNN600 init settings");
+        spdlog::warn("usage: motor_init [pi1<dir> pi2<dir> pi3<dir>] (<dir> is 'u' (increasing step) or 'd' (decreasing step)");
+        return 0;
+      }
+
+      spdlog::debug("Setting motor init position to [RNN800,RNN600,LSTAGE] = [{0},{1},{2}] dir=[{3},{5},{6}]",p1,p2,p3,d1,d2,d3);
       motor_t m1, m2, m3;
-      m1.pos_i = pi1;
-      m2.pos_i = pi2;
-      m3.pos_i = pi3;
-// finish here
+      m1.pos_i = p1;
+      m2.pos_i = p2;
+      m3.pos_i = p3;
+      m1.dir = d1;
+      m2.dir = d2;
+      m3.dir = d3;
+
       int res = set_motor_init_position(m1,m2,m3);
     }
     if (res != 0)
