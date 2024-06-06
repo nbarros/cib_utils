@@ -503,8 +503,10 @@ int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3)
 
   // read the register back to be sure
   int32_t m1r,m2r,m3r;
+  mask = cib::util::bitmask(21,0);
   m1r = cib::util::cast_to_signed(cib::util::reg_read(g_cib_mem.gpio_motor_1.v_addr), mask);
   m2r = cib::util::cast_to_signed(cib::util::reg_read(g_cib_mem.gpio_motor_2.v_addr), mask);
+  cib::util::bitmask(16,0);
   m3r = cib::util::cast_to_signed(cib::util::reg_read(g_cib_mem.gpio_motor_3.v_addr), mask);
   spdlog::info("Position set (readback [{0},{1},{2}])",
                m1r,m2r,m3r);
