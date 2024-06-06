@@ -155,7 +155,7 @@ namespace cib
 
     // converts a masked unsigned value into a signed
     // the mask is always assumed to start at 0, so the value has to be shifted right until the lsb aligns with 0
-    int32_t cast_to_signed(uint32_t reg, uint32_t mask)
+    int32_t cast_to_signed(const uint32_t reg, const uint32_t mask)
     {
       // first find the msb in the mask. That will be the signed bit
       uint32_t msb = 0;
@@ -169,6 +169,7 @@ namespace cib
         }
       }
       //spdlog::trace("MSB of the mask is {0}",msb);
+      // check the msb of the register. That is the sign bit
       if ((1U<< msb) & reg)
       {
         //spdlog::trace("MSB of the mask is {0}",msb);
@@ -185,7 +186,7 @@ namespace cib
       return res;
     }
 
-    uint32_t cast_from_signed(int32_t val, uint32_t mask)
+    uint32_t cast_from_signed(const int32_t val, const uint32_t mask)
     {
 
       // first find the msb in the mask. That will be the signed bit

@@ -29,8 +29,8 @@ namespace cib
     uintptr_t cast_to_uintptr(void* val);
     uint32_t bitmask(uint32_t highbit, uint32_t lowbit);
     const std::string dump_binary(uint32_t val);
-    int32_t cast_to_signed(uint32_t reg, uint32_t mask);
-    uint32_t cast_from_signed(int32_t val, uint32_t mask);
+    int32_t cast_to_signed(const uint32_t reg, const uint32_t mask);
+    uint32_t cast_from_signed(const int32_t val, const uint32_t mask);
 
   }
 };

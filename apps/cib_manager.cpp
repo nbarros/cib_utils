@@ -506,7 +506,7 @@ int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3)
   mask = cib::util::bitmask(21,0);
   m1r = cib::util::cast_to_signed(cib::util::reg_read(g_cib_mem.gpio_motor_1.v_addr), mask);
   m2r = cib::util::cast_to_signed(cib::util::reg_read(g_cib_mem.gpio_motor_2.v_addr), mask);
-  cib::util::bitmask(16,0);
+  mask = cib::util::bitmask(16,0);
   m3r = cib::util::cast_to_signed(cib::util::reg_read(g_cib_mem.gpio_motor_3.v_addr), mask);
   spdlog::info("Position set (readback [{0},{1},{2}])",
                m1r,m2r,m3r);
@@ -537,7 +537,7 @@ int get_motor_init_position()
   uint32_t m1dir = (m1r & mask) >> 31;
   uint32_t m2dir = (m1r & mask) >> 31;
   uint32_t m3dir = (m1r & mask) >> 31;
-  spdlog::info("Getting movement direction from motors (0 : u, 1: d)");
+  spdlog::trace("Getting movement direction from motors (0 : u, 1: d)");
   spdlog::info("Direction [RNN800, RNN600, LSTAGE] = [{0},{1},{2}]",m1dir,m2dir,m3dir);
 
   return 0;
