@@ -1641,7 +1641,7 @@ int main(int argc, char** argv)
   // initiate spdlog
   spdlog::set_pattern("cib : [%^%L%$] %v");
   spdlog::set_level(spdlog::level::info); // Set global log level to info
-
+  motor_init_limits();
 
   int c;
   opterr = 0;
