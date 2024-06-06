@@ -25,7 +25,7 @@
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <ctime>
-
+#include <thread>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include "axis-fifo.h"
