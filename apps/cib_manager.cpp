@@ -521,9 +521,10 @@ int get_motor_init_position()
   m1r = cib::util::reg_read(g_cib_mem.gpio_motor_1.v_addr);
   m2r = cib::util::reg_read(g_cib_mem.gpio_motor_2.v_addr);
   m3r = cib::util::reg_read(g_cib_mem.gpio_motor_3.v_addr);
-
+  spdlog::info("Raw values: {0:X} {1:X} {2:X}",m1r,m2r,m3r);
   int32_t m1pos = cib::util::cast_to_signed(m1r,mask);
   int32_t m2pos = cib::util::cast_to_signed(m2r,mask);
+  mask = cib::util::bitmask(16,0);
   int32_t m3pos = cib::util::cast_to_signed(m3r,mask);
 
   spdlog::info("Getting initial movement position from motors");
