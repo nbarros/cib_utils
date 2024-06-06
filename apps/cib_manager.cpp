@@ -557,11 +557,11 @@ int motor_extract_info(const char *arg, int32_t &pos, uint32_t &dir)
 {
   // first grab the last char of the arg
   std::string str(arg);
-  if (str[0] == 'u')
+  if (*(str.rbegin()) == 'u')
   {
     dir = 1;
   }
-  else if (str[0] == 'd')
+  else if (*(str.rbegin()) == 'd')
   {
     dir = 0;
   }
