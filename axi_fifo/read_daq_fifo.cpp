@@ -33,6 +33,7 @@
 #include <cstdint>
 #include <iostream>
 #include <cib_mem.h>
+#include <cib_data_fmt.h>
 #include <mem_utils.h>
 
 /*----------------------------------------------------------------------------
@@ -47,36 +48,7 @@ struct thread_data
 };
 
 
-typedef struct iols_trigger_t
-{
-  // lsb
-  uint32_t pos_m3 : 17;
-  uint32_t pos_m2_lsb : 15;
-  uint32_t pos_m2_msb : 7;
-  uint32_t pos_m1 : 22;
-  uint32_t padding : 3;
-  uint64_t timestamp;
-  // msb
-  static const uint32_t mask_m3 = 0x1FFFF;
-  static const uint32_t mask_m2_1 = 0xFFFE0000;
-  static const uint32_t mask_m2_2 = 0x7F;
-  static const uint32_t mask_m1 = 0x1FFFFF80;
-  static const uint32_t bitmask_m1 = 0x3FFFFF;
-
-
-  int32_t get_pos_m1() {return cib::util::cast_to_signed(pos_m1,bitmask_m1);}
-  int32_t get_pos_m3() {return cib::util::cast_to_signed(pos_m3,mask_m3);}
-  int32_t get_pos_m2()
-  {
-    uint32_t m2_lsb = pos_m2_lsb;
-    uint32_t m2_msb = pos_m2_msb;
-    uint32_t m2 = (m2_msb << 15) | pos_m2_lsb;
-    // the bitmask is the same
-    return cib::util::cast_to_signed(m2,bitmask_m1);
-  }
-} iols_trigger_t;
-
-
+using cib::daq::iols_trigger_t;
 pthread_t read_from_fifo_thread;
 
 static volatile bool running = true;
