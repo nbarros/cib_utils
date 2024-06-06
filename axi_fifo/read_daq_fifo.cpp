@@ -167,6 +167,10 @@ static void *read_from_fifo_thread_fn(void *data)
 
       packets_rx++;
     }
+    else
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
   }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
