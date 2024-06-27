@@ -169,6 +169,8 @@ static void *read_from_fifo_thread_fn(void *data)
     }
     else
     {
+      // this caused CPU usage to drop from 100% (on one core) down to 0.2%
+      // way to go.
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
