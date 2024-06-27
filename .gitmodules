@@ -11,3 +11,7 @@
 	path = contrib/cppzmq
 	url = https://github.com/zeromq/cppzmq.git
 	shallow = true
+[submodule "contrib/json"]
+	path = contrib/json
+	url = git@github.com:nlohmann/json.git
+	shallow = true
