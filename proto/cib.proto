@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package cib;
+
+import "google/protobuf/any.proto";
+
+message Command {
+  google.protobuf.Any cmd = 1;
+}
+
+// aux messages that hold specific pieces of information
+// these are not meant to be shipped by themselves
+message Server {
+	string host = 1;
+	uint32 port = 2;
+}
+
+message Laser {
+	uint32 period = 1;
+	uint32 fire_width = 2;
+	uint32 qswitch_width = 3;
+	uint32 qswitch_delay = 4;
+}
+
+message Motor {
+	uint32 index = 1;
+	uint32 direction = 2;
+	int32 current_position = 3;
+	int32 init_position = 4;
+}
+
+message Config {
+  	Server stream_client = 1;
+	Laser laser = 2;
+	repeated Motor motors = 3;
+
+}
+
+
+// this object will be filled in the future, but
+// the idea is to send back some feedback abou what was run
+message Statistics {
+	uint32 num_shots = 1;
+	uint32 num_triggers = 2;
+	uint32 num_segments = 3;
+	uint32 num_steps_m1 = 4;
+	uint32 num_steps_m2 = 5;
+	uint32 num_steps_m3 = 6;
+}
+
+message StartRun {
+ uint32 run_number = 1;
+}
+
+message StopRun {
+ bool send_statistics = 1;
+ Statistics stats = 2;
+}
+
+message Status {
+
+}
+// empty message
+message Empty {
+
+}

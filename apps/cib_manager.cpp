@@ -29,6 +29,9 @@ extern "C"
 #include <cib_data_fmt.h>
 #include <AD5339.h>
 
+//extern cib::limits::motor_limits_t m_limits;
+cib::limits::motor_limits_t m_limits;
+
 volatile std::atomic<bool> run;
 
 using cib::cib_mem_t;
@@ -464,20 +467,20 @@ int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3)
   spdlog::info("Setting initial position to [RNN800, RNN600, LSTAGE] = ({0}:{1}, {2}:{3}, {4}:{5})",
                m1.pos_i,m1.dir,m2.pos_i,m2.dir,m3.pos_i,m3.dir);
 
-  if ((m1.pos_i < cib::limits::m_limits.m1_min) || (m1.pos_i > cib::limits::m_limits.m1_max))
+  if ((m1.pos_i < m_limits.m1_min) || (m1.pos_i > m_limits.m1_max))
   {
-    spdlog::error("Requested RNN800/TSTAGE position out of range [{0};{1}]",cib::limits::m_limits.m1_min,cib::limits::m_limits.m1_max);
+    spdlog::error("Requested RNN800/TSTAGE position out of range [{0};{1}]",m_limits.m1_min,m_limits.m1_max);
     return 1;
   }
-  if ((m2.pos_i < cib::limits::m_limits.m2_min) || (m2.pos_i > cib::limits::m_limits.m2_max))
+  if ((m2.pos_i < m_limits.m2_min) || (m2.pos_i > m_limits.m2_max))
   {
-    spdlog::error("Requested RNN600 position out of range [{0};{1}]",cib::limits::m_limits.m2_min,cib::limits::m_limits.m2_max);
+    spdlog::error("Requested RNN600 position out of range [{0};{1}]",m_limits.m2_min,m_limits.m2_max);
     return 1;
   }
 
-  if ((m3.pos_i < cib::limits::m_limits.m3_min) || (m3.pos_i > cib::limits::m_limits.m3_max))
+  if ((m3.pos_i < m_limits.m3_min) || (m3.pos_i > m_limits.m3_max))
   {
-    spdlog::error("Requested LSTAGE position out of range [{0};{1}]",cib::limits::m_limits.m3_min,cib::limits::m_limits.m3_max);
+    spdlog::error("Requested LSTAGE position out of range [{0};{1}]",m_limits.m3_min,m_limits.m3_max);
     return 1;
   }
 
@@ -546,12 +549,12 @@ int get_motor_init_position()
 int motor_init_limits()
 {
   // limits from https://docs.google.com/spreadsheets/d/100HDufZ39EIJtkl2HsLmL_xbE8cTSIuBd_5BsyRRMto/edit?usp=sharing
-  cib::limits::m_limits.m3_min = -3001;
-  cib::limits::m_limits.m3_max = 28967;
-  cib::limits::m_limits.m2_min = -580000;
-  cib::limits::m_limits.m2_max = 580000;
-  cib::limits::m_limits.m1_min = -580000;
-  cib::limits::m_limits.m1_max = 580000;
+  m_limits.m3_min = -3001;
+  m_limits.m3_max = 28967;
+  m_limits.m2_min = -580000;
+  m_limits.m2_max = 580000;
+  m_limits.m1_min = -580000;
+  m_limits.m1_max = 580000;
 
   return 0;
 }

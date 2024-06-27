@@ -56,10 +56,8 @@ namespace cib
       int32_t m3_max;
     } motor_limits_t;
 
-    motor_limits_t limits_p1;
-    motor_limits_t limits_p2;
-    motor_limits_t m_limits;
   }
+
   namespace daq
   {
 
