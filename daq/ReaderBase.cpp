@@ -67,7 +67,7 @@ namespace cib
     try
     {
       boost::asio::ip::tcp::resolver resolver( m_receiver_ios );
-      boost::asio::ip::tcp::resolver::query query(m_receiver_host, std::to_string(m_receiver_port) ) ; //"np04-ctb-1", 8991
+      boost::asio::ip::tcp::resolver::query query(m_receiver_host, std::to_string(m_receiver_port),boost::asio::ip::tcp::resolver::query::v4_mapped ) ; //"np04-ctb-1", 8991
       boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(query) ;
       m_receiver_endpoint = iter->endpoint();
       m_receiver_socket.connect( m_receiver_endpoint );

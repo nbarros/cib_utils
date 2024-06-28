@@ -321,25 +321,26 @@ int main(int argc, char **argv)
     boost::system::error_code ec;
     boost::asio::io_service ios;
     boost::asio::ip::tcp::resolver resolver( ios );
-    boost::asio::ip::tcp::resolver::query query("localhost", "8992",boost::asio::ip::tcp::resolver::query::canonical_name) ; //"np04-ctb-1", 8991
-    boost::asio::ip::tcp::resolver::iterator tmp_iter = resolver.resolve(query,ec) ;
+    boost::asio::ip::tcp::resolver::query query("localhost", "8992",boost::asio::ip::tcp::resolver::query::v4_mapped) ; //"np04-ctb-1", 8991
+    boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(query,ec) ;
     boost::asio::ip::tcp::resolver::iterator end;
+    boost::asio::ip::tcp::resolver::iterator tmpit = iter;
 
     if (ec)
     {
       SPDLOG_ERROR("Failed to resolve the server address : {0}",ec.message());
       return 0;
     }
-    while(tmp_iter != end)
+    while(tmpit != end)
     {
-      SPDLOG_TRACE("Resolver entry : {0} {1} {2}",tmp_iter->host_name(),tmp_iter->service_name(),tmp_iter->endpoint().address().is_v4());
-      tmp_iter++;
+      SPDLOG_TRACE("Resolver entry : {0} {1} {2}",tmpit->host_name(),tmpit->service_name(),tmpit->endpoint().address().is_v4());
+      tmpit++;
     }
 
     //SPDLOG_TRACE("Iterator size : {0}",tmp_iter);
     boost::asio::ip::tcp::socket socket(ios);
     SPDLOG_DEBUG("Opening connection to server");
-    socket.connect(tmp_iter->endpoint(),ec);
+    socket.connect(iter->endpoint(),ec);
     if (ec)
     {
       SPDLOG_CRITICAL("Failed to connect to the server. Message : {0}",ec.message());

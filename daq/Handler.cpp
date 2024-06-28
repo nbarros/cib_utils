@@ -157,7 +157,7 @@ namespace cib
         SPDLOG_DEBUG("Creating temporary connection to consume lingering listener.");
         boost::asio::io_service tmp_ios;
         boost::asio::ip::tcp::resolver tmp_resolver( tmp_ios );
-        boost::asio::ip::tcp::resolver::query tmp_query("localhost", std::to_string(m_control_port) ) ; //"np04-ctb-1", 8991
+        boost::asio::ip::tcp::resolver::query tmp_query("localhost", std::to_string(m_control_port),boost::asio::ip::tcp::resolver::query::v4_mapped ) ; //"np04-ctb-1", 8991
         boost::asio::ip::tcp::resolver::iterator tmp_iter = tmp_resolver.resolve(tmp_query) ;
         boost::asio::ip::tcp::socket tmp_sock(tmp_ios);
         tmp_sock.connect(tmp_iter->endpoint());
