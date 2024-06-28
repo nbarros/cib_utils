@@ -332,7 +332,7 @@ int main(int argc, char **argv)
     }
     while(tmp_iter != end)
     {
-      SPDLOG_TRACE("Resolver entry : {0}",tmp_iter->host_name());
+      SPDLOG_TRACE("Resolver entry : {0} {1} {2}",tmp_iter->host_name(),tmp_iter->service_name(),tmp_iter->endpoint().address().is_v4());
       tmp_iter++;
     }
 
