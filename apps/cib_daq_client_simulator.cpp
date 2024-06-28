@@ -299,14 +299,23 @@ int main(int argc, char **argv)
 
   SPDLOG_INFO( "spdlog active level {}",SPDLOG_ACTIVE_LEVEL);
 
+  std::string server_host = "localhost";
+  std::string server_port = "8992";
+
   signed char opt;
   //    while ((opt = getopt(argc, argv, "w:h")) != -1) {
-  while ((opt = getopt(argc, argv, "h")) != -1) {
+  while ((opt = getopt(argc, argv, "hH:P:")) != -1) {
     switch (opt) {
       case 'h':
         print_usage(argv[0]);
         print_help();
         return 1;
+      case 'H':
+        server_host = optarg;
+        break;
+      case 'P':
+        server_port = optarg;
+        break;
         //           case 'w':
         //               ip = optarg;
         //               break;
@@ -321,11 +330,11 @@ int main(int argc, char **argv)
     boost::system::error_code ec;
     boost::asio::io_service ios;
     boost::asio::ip::tcp::resolver resolver( ios );
-    boost::asio::ip::tcp::resolver::query query("localhost", "8992",boost::asio::ip::tcp::resolver::query::v4_mapped) ; //"np04-ctb-1", 8991
+    // deprecated code
+    //boost::asio::ip::tcp::resolver::query query("localhost", "8992",boost::asio::ip::tcp::resolver::query::v4_mapped) ; //"np04-ctb-1", 8991
     //boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(query,ec) ;
-    // FIXME: Finish here
     boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(boost::asio::ip::tcp::v4(),
-                                                                     "localhost", "8992",ec);
+                                                                     server_host, server_port,ec);
 
     boost::asio::ip::tcp::resolver::iterator end;
     boost::asio::ip::tcp::resolver::iterator tmpit = iter;
@@ -337,7 +346,7 @@ int main(int argc, char **argv)
     }
     while(tmpit != end)
     {
-      SPDLOG_TRACE("Resolver entry : {0} {1} {2}",tmpit->host_name(),tmpit->service_name(),tmpit->endpoint().address().is_v4());
+      SPDLOG_TRACE("Resolver entry : name : {0} port: {1} v4: {2}",tmpit->host_name(),tmpit->service_name(),tmpit->endpoint().address().is_v4());
       tmpit++;
     }
 

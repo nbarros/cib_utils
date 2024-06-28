@@ -157,13 +157,16 @@ namespace cib
         SPDLOG_DEBUG("Creating temporary connection to consume lingering listener.");
         boost::asio::io_service tmp_ios;
         boost::asio::ip::tcp::resolver tmp_resolver( tmp_ios );
-
-        boost::asio::ip::tcp::resolver::query tmp_query("localhost", std::to_string(m_control_port),boost::asio::ip::tcp::resolver::query::v4_mapped ) ; //"np04-ctb-1", 8991
-        boost::asio::ip::tcp::resolver::iterator tmp_iter = tmp_resolver.resolve(tmp_query) ;
         boost::asio::ip::tcp::socket tmp_sock(tmp_ios);
-        tmp_sock.connect(tmp_iter->endpoint());
-        boost::system::error_code tmp_ce;
-        tmp_sock.shutdown(boost::asio::ip::tcp::socket::shutdown_send, tmp_ce);
+        boost::system::error_code tmp_ec;
+
+        // deprecated code
+        //        boost::asio::ip::tcp::resolver::query tmp_query("localhost", std::to_string(m_control_port),boost::asio::ip::tcp::resolver::query::v4_mapped ) ; //"np04-ctb-1", 8991
+        //        boost::asio::ip::tcp::resolver::iterator tmp_iter = tmp_resolver.resolve(tmp_query) ;
+        //tmp_sock.connect(tmp_iter->endpoint());
+        tmp_sock.connect(tmp_resolver.resolve(boost::asio::ip::tcp::v4(),
+                                              "localhost",std::to_string(m_control_port),tmp_ec)->endpoint());
+        tmp_sock.shutdown(boost::asio::ip::tcp::socket::shutdown_send, tmp_ec);
         tmp_sock.close();
         tmp_resolver.cancel();
         tmp_ios.stop();
@@ -420,6 +423,24 @@ namespace cib
       else
       {
         SPDLOG_INFO("CIB configured");
+      }
+      SPDLOG_DEBUG("Calling init");
+      ret = m_reader->init();
+      if (ret)
+      {
+        SPDLOG_ERROR("Failed to initialize reader");
+        // grab all the feedback from the reader
+        std::vector<daq::iols_feedback_msg_t> msgs;
+        m_reader->get_feedback(msgs);
+        for (auto entry: msgs)
+        {
+          add_feedback(resp,entry.sev, entry.msg);
+        }
+        had_error = true;
+      }
+      else
+      {
+        SPDLOG_INFO("readout initialized");
       }
     }
     catch(nlohmann::json::exception &e)
