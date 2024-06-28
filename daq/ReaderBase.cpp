@@ -27,6 +27,7 @@ namespace cib
                            ,m_sent_bytes(0)
                            ,m_sent_packets(0)
                            ,m_error_state(false)
+                           ,m_readout_thread(nullptr)
                            ,m_receiver_port(0)
                            ,m_receiver_host("")
                            ,m_receiver_timeout(5000) // 5 ms
@@ -196,24 +197,18 @@ namespace cib
     else if (m_state == kSet)
     {
       SPDLOG_WARN("Overriding receiver data after initial configuration");
-      msg.sev = "WARN";
-      msg.msg = "Overriding receiver data after initial configuration";
-      m_message_queue.push(msg);
+      add_feedback("WARN","Overriding receiver data after initial configuration");
     }
     else if (m_state == kReady)
     {
       SPDLOG_WARN("Socket is already initialized. Closing and reopening");
-      msg.sev = "WARN";
-      msg.msg = "Socket is already initialized. Closing and reopening";
-      m_message_queue.push(msg);
+      add_feedback("WARN","Socket is already initialized. Closing and reopening");
       term_transmitter();
     }
     else
     {
       SPDLOG_ERROR("System is already running.");
-      msg.sev = "ERROR";
-      msg.msg = "System is already running.";
-      m_message_queue.push(msg);
+      add_feedback("ERROR","System is already running");
       return 1;
     }
 
@@ -221,8 +216,7 @@ namespace cib
     m_receiver_host = host;
     m_receiver_port = port;
     m_state = kSet;
-    msg.sev = "INFO";
-    msg.msg = "Receiver configuration set";
+    add_feedback("INFO","Receiver configuration set");
 
     return 0;
   }
@@ -254,5 +248,14 @@ namespace cib
     term_transmitter();
     return 0;
   }
+
+  void ReaderBase::add_feedback(const std::string severity, std::string msg)
+  {
+    daq::iols_feedback_msg_t entry;
+    entry.sev = severity;
+    entry.msg = msg;
+    m_message_queue.push(entry);
+  }
+
 
 } /* namespace cib */

@@ -41,9 +41,13 @@ namespace cib
     // function overloads that implement the specific methods
     int start_run(const uint32_t run_number) override;
     int stop_run() override;
-
+    void readout_task() override;
 
 private:
+    void start_daq_run();
+    void stop_daq_run();
+    void reset_daq_fifo();
+
     //void send_data(size_t n_bytes);
     bool m_debug;
     bool m_is_ready;
@@ -55,8 +59,11 @@ private:
     std::string m_axi_dev;
     int m_dev_fd;
     // each word has 16 bytes
-    uint8_t m_buffer[32]; // room for 1000 words
-
+    //uint8_t m_buffer[32]; // room for 1000 words
+    uintptr_t m_ctl_reg_addr;
+    int m_dev_mem_fd;
+    // statistics counting
+    // this should perhaps go to the base class
     uint32_t m_tot_packets_rx;
     uint32_t m_tot_bytes_rx;
     uint32_t m_tot_packets_sent;

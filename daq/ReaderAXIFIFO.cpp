@@ -12,6 +12,7 @@
 #include <cib_data_fmt.h>
 #include <thread>
 #include <chrono>
+#include <cib_mem.h>
 
 extern "C"
 {
@@ -29,40 +30,84 @@ namespace cib
         ,m_receiver_port(0)
         ,m_axi_dev("/dev/axis_fifo_0x00000000a0000000")
         ,m_dev_fd(0)
+        ,m_ctl_reg_addr(0)
+        ,m_dev_mem_fd(0)
         ,m_tot_packets_rx(0)
         ,m_tot_bytes_rx(0)
         ,m_tot_packets_sent(0)
         ,m_tot_bytes_sent(0)
+
   {
 
+    // map the control register memmory address
+    spdlog::info("Mapping DAQ control register at 0x{0:X}",GPIO_MISC_MEM_LOW);
+    m_ctl_reg_addr = cib::util::map_phys_mem(m_dev_mem_fd,GPIO_MISC_MEM_LOW,GPIO_MISC_MEM_LOW+0x1000);
+    if (m_ctl_reg_addr)
+    {
+      spdlog::debug("Mapped address : 0x{0:X}",m_ctl_reg_addr);
+    }
+    else
+    {
+      spdlog::error("Failed to map memory. Thi will fail somewhere.");
+    }
   }
 
   ReaderAXIFIFO::~ReaderAXIFIFO ()
   {
 
-    // we may want to clean up the sockets here
-
+    spdlog::trace("Passing destructor.");
+    if (m_ctl_reg_addr)
+    {
+      spdlog::debug("Unmapping the MM register.");
+      cib::util::unmap_mem(m_ctl_reg_addr,0x1000);
+      close(m_dev_mem_fd);
+    }
   }
 
-  void ReaderAXIFIFO::reset_daq_run()
+  void ReaderAXIFIFO::reset_daq_fifo()
   {
+    if (!m_ctl_reg_addr)
+    {
+      // the memory mapped register is not mapped. Do nothing
+      spdlog::error("Memory not mapped. Doing nothing.");
+      add_feedback("ERROR","Control register not mapped. Doing nothing.");
+      return;
+    }
     // this resets the FIFO
-    uint32_t mask = cib::util::bitmask(26,26);
-    cib::util::reg_write_mask_offset(maddr,0x1,mask,26);
+    const uint32_t bit = 25;
+    uint32_t mask = cib::util::bitmask(bit,bit);
+    cib::util::reg_write_mask_offset(m_ctl_reg_addr,0x1,mask,bit);
+    std::this_thread::sleep_for(std::chrono::microseconds(10));
+    cib::util::reg_write_mask_offset(m_ctl_reg_addr,0x0,mask,bit);
   }
-
-  void ReaderAXIFIFO::
 
   void ReaderAXIFIFO::start_daq_run()
   {
-    uint32_t mask = cib::util::bitmask(26,26);
-    cib::util::reg_write_mask_offset(maddr,0x1,mask,26);
+    if (!m_ctl_reg_addr)
+    {
+      // the memory mapped register is not mapped. Do nothing
+      spdlog::error("Memory not mapped. Doing nothing.");
+      add_feedback("ERROR","Control register not mapped. Doing nothing.");
+      return;
+    }
+    const uint32_t bit = 25;
+
+    uint32_t mask = cib::util::bitmask(bit,bit);
+    cib::util::reg_write_mask_offset(m_ctl_reg_addr,0x1,mask,bit);
   }
 
   void ReaderAXIFIFO::stop_daq_run()
   {
-    uint32_t mask = cib::util::bitmask(26,26);
-    cib::util::reg_write_mask_offset(maddr,0x0,mask,26);
+    if (!m_ctl_reg_addr)
+    {
+      // the memory mapped register is not mapped. Do nothing
+      spdlog::error("Memory not mapped. Doing nothing.");
+      add_feedback("ERROR","Control register not mapped. Doing nothing.");
+      return;
+    }
+    const uint32_t bit = 25;
+    uint32_t mask = cib::util::bitmask(bit,bit);
+    cib::util::reg_write_mask_offset(m_ctl_reg_addr,0x0,mask,bit);
   }
 
 
@@ -75,7 +120,10 @@ namespace cib
     m_dev_fd = open(m_axi_dev.c_str(),O_RDONLY | O_NONBLOCK);
     if (m_dev_fd < 0)
     {
+      std::ostringstream msg;
+      msg << "Failed to open FIFO. Message : " << std::strerror(errno);
       spdlog::error("Failed to open FIFO. Message : {0}",std::strerror(errno));
+      add_feedback("ERROR",msg.str());
       m_is_ready = false;
     }
     // -- call a reset FIFO to clear out existing stale content
@@ -85,6 +133,7 @@ namespace cib
     if (rc)
     {
       spdlog::error("Failed to reset the FIFO");
+      add_feedback("WARN","Failed to reset the DAQ FIFO");
       return 1;
     }
 
@@ -93,26 +142,8 @@ namespace cib
     return 0;
   }
 
-  int ReaderAXIFIFO::start_run(const uint32_t run_number)
+  void ReaderAXIFIFO::readout_task()
   {
-    /**
-     * Method of operation:
-     * 1. Establish the connection
-     * 2. Initiate the FIFO reading process
-     * 3. Activate the DAQ FIFO (this should not be controlled by the slow control)
-     * 3. Ship when data is received
-     */
-
-    if (!m_is_ready)
-    {
-      spdlog::error("Failed to start acquisition because the FIFO is not initialized");
-      return 1;
-    }
-
-      // step 1 - establish the connection
-    // FIXME: Implement this
-
-    // step 2 - start reading
     ssize_t bytes_rx = 0;
     uint32_t run_packets_rx = 0;
     int rc = 0;
@@ -128,7 +159,7 @@ namespace cib
         if (m_debug)
         {
           daq::iols_trigger_t *word;
-          word = reinterpret_cast<daq::iols_trigger_t*>(m_buffer);
+          word = &(m_eth_packet.word); //reinterpret_cast<daq::iols_trigger_t*>(m_buffer);
           spdlog::debug("RX Word : TS {0} M1 {1} M2 {2} M3 {3}",word->timestamp,word->get_pos_m1(),word->get_pos_m2(),word->get_pos_m3());
         }
         if (bytes_rx != sizeof(daq::iols_trigger_t))
@@ -162,12 +193,86 @@ namespace cib
       spdlog::error("IOCTL failure checking AXIS_FIFO_GET_RX_BYTES_READ\n");
     }
     spdlog::info("FIFO report : Received {0} bytes ({1} packets)",bytes_read,pkts_read);
+
+  }
+
+  int ReaderAXIFIFO::start_run(const uint32_t run_number)
+  {
+    /**
+     * Method of operation:
+     * 1. Establish the connection
+     * 2. Initiate the FIFO reading process
+     * 3. Activate the DAQ FIFO (this should not be controlled by the slow control)
+     * 3. Ship when data is received
+     */
+
+    if (!m_is_ready)
+    {
+      spdlog::error("Failed to start acquisition because the FIFO is not initialized");
+      add_feedback("ERROR","FIFO is not initialized.");
+      return 1;
+    }
+
+    // step 1 - establish the connection to the receiver
+    init_transmitter();
+    // reset the DAQ FIFO
+    reset_daq_fifo();
+    // set the data taking flag
+    m_take_data.store(true);
+
+    // step 2 - start reading
+    m_readout_thread = std::unique_ptr<std::thread>(new std::thread(&ReaderAXIFIFO::readout_task,this));
+    if (m_readout_thread.get() == nullptr)
+    {
+      spdlog::error("Failed to launch readout thread.");
+      add_feedback("ERROR","Failed to launch readout thread");
+      return 1;
+    }
+    // step 3 - now activate the DAQ fifo
+    start_daq_run();
+
+    m_state = kRunning;
     return 0;
   }
 
   int ReaderAXIFIFO::stop_run()
   {
-    m_take_data.store(true);
+    //
+    if (m_state != kRunning)
+    {
+      spdlog::error("Failed to stop acquisition because we are not running");
+      add_feedback("ERROR","We are not in a running state");
+      return 1;
+    }
+    // tell the DAQ to stop taking data
+    stop_daq_run();
+
+    //
+
+    m_take_data.store(false);
+    // wait for a sec to allow the data taking to stop
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+    // join the readout thread
+    if (m_readout_thread.get()->joinable())
+    {
+      SPDLOG_TRACE("Thread is joinable. Joining it.");
+      m_readout_thread.get()->join();
+      SPDLOG_TRACE("Thread joined.");
+    }
+    else
+    {
+      SPDLOG_WARN("Thread is not joinable. Forcing our way out of it.");
+      // this should not happen.
+      // It will certainly lead to dirty trail of remains
+      //m_control_thread.get_deleter().default_delete();
+      //SPDLOG_TRACE("Thread is now dead.");
+      m_readout_thread = nullptr;
+    }
+
+    // terminate the transmission socket
+    term_transmitter();
+
     return 0;
   }
 

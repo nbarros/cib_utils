@@ -63,7 +63,8 @@ namespace cib
 
     virtual void reset_buffers() {}
     int send_data(uint8_t *data, size_t n_bytes);
-
+    void add_feedback(const std::string severity, std::string msg);
+    virtual void readout_task() {};
 
 //  private:
 //    // the real worker threads
@@ -93,6 +94,10 @@ namespace cib
 
     std::atomic<bool> m_error_state;
     boost::lockfree::spsc_queue<daq::iols_feedback_msg_t, boost::lockfree::capacity<1024> > m_message_queue;
+
+    // acquisition handler
+    std::unique_ptr<std::thread> m_readout_thread;
+
 
     //
     // -- eth stuff
