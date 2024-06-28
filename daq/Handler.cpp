@@ -497,6 +497,7 @@ namespace cib
     }
     SPDLOG_DEBUG("Starting run");
     ret = m_reader->start_run(run_number);
+    std::vector<daq::iols_feedback_msg_t> msgs;
     m_reader->get_feedback(msgs);
     for (auto entry: msgs)
     {
