@@ -84,8 +84,8 @@ void receiver()
     {
       if ( accepting.wait_for( timeout ) == std::future_status::ready )
       {
-         SPDLOG_INFO("Connection request arrived.");
-         break ;
+        SPDLOG_INFO("Connection request arrived.");
+        break ;
       }
     }
     if (!g_receive.load())
@@ -118,7 +118,7 @@ void receiver()
     }
     boost::system::error_code error;
     cib::daq::iols_tcp_packet_t packet;
-//    boost::array<char, 1024> req_buff{" "} ;
+    //    boost::array<char, 1024> req_buff{" "} ;
 
     while (g_receive.load())
     {
@@ -175,17 +175,17 @@ void print_usage(const char *prog) {
 }
 
 void print_help() {
-    printf("Available commands:\n");
-    printf("  config\n");
-    printf("    Reboot the WIB\n");
-    printf("  start_run <run_number>\n");
-    printf("    Start a data taking run\n");
-    printf("  stop_run\n");
-    printf("    Stop a data taking run\n");
-    printf("  help\n");
-    printf("    Show this help\n");
-    printf("  exit\n");
-    printf("    Closes the command interface\n");
+  printf("Available commands:\n");
+  printf("  config\n");
+  printf("    Reboot the WIB\n");
+  printf("  start_run <run_number>\n");
+  printf("    Start a data taking run\n");
+  printf("  stop_run\n");
+  printf("    Stop a data taking run\n");
+  printf("  help\n");
+  printf("    Show this help\n");
+  printf("  exit\n");
+  printf("    Closes the command interface\n");
 }
 
 int send_message(boost::asio::ip::tcp::socket  &socket,const std::string &msg)
@@ -227,150 +227,180 @@ int send_message(boost::asio::ip::tcp::socket  &socket,const std::string &msg)
 }
 int run_command(boost::asio::ip::tcp::socket  &socket, int argc, char **argv)
 {
-    if (argc < 1) return 1;
-    int ret = 0;
-    std::string cmd(argv[0]);
-    if (cmd == "exit") {
-        return 255;
-    }
-    else if (cmd == "config")
+  if (argc < 1) return 1;
+  int ret = 0;
+  std::string cmd(argv[0]);
+  if (cmd == "exit") {
+    return 255;
+  }
+  else if (cmd == "config")
+  {
+    std::string cfg_frag = get_config().dump();
+    ret = send_message(socket,cfg_frag);
+    if (ret)
     {
-      std::string cfg_frag = get_config().dump();
-      ret = send_message(socket,cfg_frag);
-      if (ret)
-      {
-        SPDLOG_ERROR("Failed to configure system. Check feedback messages");
-      }
+      SPDLOG_ERROR("Failed to configure system. Check feedback messages");
     }
-    else if (cmd == "start_run")
-    {
+  }
+  else if (cmd == "start_run")
+  {
 
-      SPDLOG_DEBUG("Starting the listening thread");
-      m_receiver_task = new std::thread(&receiver);
-      g_receive.store(true);
-      json obj;
-      static int rn = 0;
-      rn++;
-      obj["command"] = "start_run";
-      obj["run_number"] = rn;
-      ret = send_message(socket,obj.dump());
-      if (ret)
-      {
-        SPDLOG_ERROR("Failed to start run. Check feedback messages");
-      }
-    }
-    else if (cmd == "stop_run")
+    SPDLOG_DEBUG("Starting the listening thread");
+    m_receiver_task = new std::thread(&receiver);
+    g_receive.store(true);
+    json obj;
+    static int rn = 0;
+    rn++;
+    obj["command"] = "start_run";
+    obj["run_number"] = rn;
+    ret = send_message(socket,obj.dump());
+    if (ret)
     {
-      json obj;
-      obj["command"] = "stop_run";
-      ret = send_message(socket,obj.dump());
-      if (ret)
-      {
-        SPDLOG_ERROR("Failed to stop run. Check feedback messages");
-      }
-      g_receive.store(false);
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      m_receiver_task->join();
-      delete m_receiver_task;
+      SPDLOG_ERROR("Failed to start run. Check feedback messages");
     }
-    else if (cmd == "help")
+  }
+  else if (cmd == "stop_run")
+  {
+    json obj;
+    obj["command"] = "stop_run";
+    ret = send_message(socket,obj.dump());
+    if (ret)
     {
-      print_help();
+      SPDLOG_ERROR("Failed to stop run. Check feedback messages");
     }
-    else
-    {
-      printf("Unrecognized Command: %s\n",argv[0]);
-      return 0;
-    }
+    g_receive.store(false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    m_receiver_task->join();
+    delete m_receiver_task;
+  }
+  else if (cmd == "help")
+  {
+    print_help();
+  }
+  else
+  {
+    printf("Unrecognized Command: %s\n",argv[0]);
     return 0;
+  }
+  return 0;
 }
 
 int main(int argc, char **argv)
 {
-    char *ip = (char*)"127.0.0.1";
-    spdlog::set_pattern("[%s:%!:%#][%^%L%$] [thread %t] %v");
+  char *ip = (char*)"127.0.0.1";
+  spdlog::set_pattern("[%s:%!:%#][%^%L%$] [thread %t] %v");
 
-    spdlog::set_level(spdlog::level::trace); // Set global log level to debug
-    // if the SPDLOG_LEVEL variable is set, it overrides
-    //SPDLOG_LEVEL=info,mylogger=trace
+  spdlog::set_level(spdlog::level::trace); // Set global log level to debug
+  // if the SPDLOG_LEVEL variable is set, it overrides
+  //SPDLOG_LEVEL=info,mylogger=trace
 
-    spdlog::cfg::load_env_levels();
-    // if the level was not
+  spdlog::cfg::load_env_levels();
+  // if the level was not
 
-    SPDLOG_INFO( "spdlog active level {}",SPDLOG_ACTIVE_LEVEL);
+  SPDLOG_INFO( "spdlog active level {}",SPDLOG_ACTIVE_LEVEL);
 
-    signed char opt;
-//    while ((opt = getopt(argc, argv, "w:h")) != -1) {
-    while ((opt = getopt(argc, argv, "h")) != -1) {
-       switch (opt) {
-           case 'h':
-               print_usage(argv[0]);
-               print_help();
-               return 1;
-//           case 'w':
-//               ip = optarg;
-//               break;
-           default: /* '?' */
-               print_usage(argv[0]);
-               return 1;
-       }
+  signed char opt;
+  //    while ((opt = getopt(argc, argv, "w:h")) != -1) {
+  while ((opt = getopt(argc, argv, "h")) != -1) {
+    switch (opt) {
+      case 'h':
+        print_usage(argv[0]);
+        print_help();
+        return 1;
+        //           case 'w':
+        //               ip = optarg;
+        //               break;
+      default: /* '?' */
+        print_usage(argv[0]);
+        return 1;
     }
-
+  }
+  try
+  {
     // fixme: establish the connection here
+    boost::system::error_code ec;
     boost::asio::io_service ios;
     boost::asio::ip::tcp::resolver resolver( ios );
-    boost::asio::ip::tcp::resolver::query query("localhost", "8992" ) ; //"np04-ctb-1", 8991
-    boost::asio::ip::tcp::resolver::iterator tmp_iter = resolver.resolve(query) ;
-    boost::asio::ip::tcp::socket socket(ios);
-    socket.connect(tmp_iter->endpoint());
-    boost::system::error_code tmp_ce;
+    boost::asio::ip::tcp::resolver::query query("localhost", "8992",boost::asio::ip::tcp::resolver::query::canonical_name) ; //"np04-ctb-1", 8991
+    boost::asio::ip::tcp::resolver::iterator tmp_iter = resolver.resolve(query,ec) ;
+    boost::asio::ip::tcp::resolver::iterator end;
 
+    if (ec)
+    {
+      SPDLOG_ERROR("Failed to resolve the server address : {0}",ec.message());
+      return 0;
+    }
+    while(tmp_iter != end)
+    {
+      SPDLOG_TRACE("Resolver entry : {0}",tmp_iter->host_name());
+      tmp_iter++;
+    }
+
+    //SPDLOG_TRACE("Iterator size : {0}",tmp_iter);
+    boost::asio::ip::tcp::socket socket(ios);
+    SPDLOG_DEBUG("Opening connection to server");
+    socket.connect(tmp_iter->endpoint(),ec);
+    if (ec)
+    {
+      SPDLOG_CRITICAL("Failed to connect to the server. Message : {0}",ec.message());
+      return 0;
+    }
     // this is at the end...when exit is called
 
     if (optind < argc) {
-        return run_command(socket,argc-optind,argv+optind);
+      return run_command(socket,argc-optind,argv+optind);
     } else {
-        char* buf;
-        while ((buf = readline(">> ")) != nullptr) {
-            if (strlen(buf) > 0) {
-                add_history(buf);
-            } else {
-                free(buf);
-                continue;
-            }
-            char *delim = (char*)" ";
-            int count = 1;
-            char *ptr = buf;
-            while((ptr = strchr(ptr, delim[0])) != NULL) {
-                count++;
-                ptr++;
-            }
-            if (count > 0) {
-                char **cmd = new char*[count];
-                cmd[0] = strtok(buf, delim);
-                int i;
-                for (i = 1; cmd[i-1] != NULL && i < count; i++) {
-                    cmd[i] = strtok(NULL, delim);
-                }
-                if (cmd[i-1] == NULL) i--;
-                int ret = run_command(socket,i,cmd);
-                delete [] cmd;
-                if (ret == 255)
-                  {
-                  // exit was called. Close the show
-                  //socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, tmp_ce);
-                  socket.close();
-                  //resolver.cancel();
-                  //ios.stop();
-
-                  return 0;
-                  }
-                if (ret != 0) return ret;
-            } else {
-                return 0;
-            }
-            free(buf);
+      char* buf;
+      while ((buf = readline(">> ")) != nullptr) {
+        if (strlen(buf) > 0) {
+          add_history(buf);
+        } else {
+          free(buf);
+          continue;
         }
+        char *delim = (char*)" ";
+        int count = 1;
+        char *ptr = buf;
+        while((ptr = strchr(ptr, delim[0])) != NULL) {
+          count++;
+          ptr++;
+        }
+        if (count > 0) {
+          char **cmd = new char*[count];
+          cmd[0] = strtok(buf, delim);
+          int i;
+          for (i = 1; cmd[i-1] != NULL && i < count; i++) {
+            cmd[i] = strtok(NULL, delim);
+          }
+          if (cmd[i-1] == NULL) i--;
+          int ret = run_command(socket,i,cmd);
+          delete [] cmd;
+          if (ret == 255)
+          {
+            // exit was called. Close the show
+            //socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, tmp_ce);
+            socket.close();
+            //resolver.cancel();
+            //ios.stop();
+
+            return 0;
+          }
+          if (ret != 0) return ret;
+        } else {
+          return 0;
+        }
+        free(buf);
+      }
     }
-    return 0;
+  }
+  catch(std::exception &e)
+  {
+    SPDLOG_CRITICAL("Caught an exception: {0}",e.what());
+
+  }
+  catch(...)
+  {
+    SPDLOG_CRITICAL("Caught an unknown exception");
+  }
+  return 0;
 }
