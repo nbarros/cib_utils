@@ -322,7 +322,11 @@ int main(int argc, char **argv)
     boost::asio::io_service ios;
     boost::asio::ip::tcp::resolver resolver( ios );
     boost::asio::ip::tcp::resolver::query query("localhost", "8992",boost::asio::ip::tcp::resolver::query::v4_mapped) ; //"np04-ctb-1", 8991
-    boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(query,ec) ;
+    //boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(query,ec) ;
+    // FIXME: Finish here
+    boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(boost::asio::ip::tcp::v4(),
+                                                                     "localhost", "8992",ec);
+
     boost::asio::ip::tcp::resolver::iterator end;
     boost::asio::ip::tcp::resolver::iterator tmpit = iter;
 
