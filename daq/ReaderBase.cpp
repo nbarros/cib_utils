@@ -46,18 +46,14 @@ namespace cib
     SPDLOG_TRACE("Reader leaving destructor.");
   }
 
-  void ReaderBase::init()
+  int ReaderBase::init()
   {
     SPDLOG_INFO("Processing init.");
-
+    return 0;
   }
   // transmitter is just meant to establish the socket connection for data streaming
   void ReaderBase::init_transmitter()
   {
-//    if (!m_is_configured)
-//    {
-//      SPDLOG_WARN("System is not configured yet");
-//    }
 
     if (m_state != kSet)
     {
@@ -87,14 +83,14 @@ namespace cib
       SPDLOG_ERROR("Failed to init with unknown exception");
       m_state = kSet;
     }
-    if (m_receiver_init)
-    {
-      SPDLOG_INFO("Transmitter socket initialized");
-    }
-    else
-    {
-      SPDLOG_WARN("Transmitter socket NOT initialized");
-    }
+//    if (m_receiver_init)
+//    {
+//      SPDLOG_INFO("Transmitter socket initialized");
+//    }
+//    else
+//    {
+//      SPDLOG_WARN("Transmitter socket NOT initialized");
+//    }
   }
 
 
@@ -103,7 +99,8 @@ namespace cib
     if (m_state == kRunning)
     {
       SPDLOG_WARN("Still running. Terminating the run first");
-      stop_run();
+      m_run_enable.store(false);
+      //stop_run();
     }
 
     m_receiver_socket.close();
@@ -192,7 +189,11 @@ namespace cib
   int ReaderBase::set_eth_receiver(const std::string &host, const unsigned int port)
   {
     daq::iols_feedback_msg_t msg;
-    if (m_state == kSet)
+    if (m_state == kInit)
+    {
+      SPDLOG_INFO("Setting receiver to {0}:{1}",host,port);
+    }
+    else if (m_state == kSet)
     {
       SPDLOG_WARN("Overriding receiver data after initial configuration");
       msg.sev = "WARN";
@@ -226,30 +227,32 @@ namespace cib
     return 0;
   }
 
-  void ReaderBase::start_run(const uint32_t run_number)
+  int ReaderBase::start_run(const uint32_t run_number)
   {
     SPDLOG_INFO("Starting run.");
     init_transmitter();
     if (m_state != kReady)
     {
       SPDLOG_ERROR("Not ready to start a run");
-      return;
+      return 1;
     }
     m_run_enable.store(true);
     m_state = kRunning;
+    return 0;
   }
 
-  void ReaderBase::stop_run()
+  int ReaderBase::stop_run()
   {
     SPDLOG_INFO("Stopping run.");
     if (m_state != kRunning)
     {
       SPDLOG_ERROR("Trying to stop but run not running");
-      return;
+      return 1;
     }
     m_run_enable.store(false);
-    term_transmitter();
     m_state = kReady;
+    term_transmitter();
+    return 0;
   }
 
 } /* namespace cib */

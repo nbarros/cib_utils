@@ -39,9 +39,9 @@ namespace cib
     void listen_task();
     void process_request();
 
-    void config(nlohmann::json &conf, nlohmann::json &resp);
-    void start_run(nlohmann::json &resp, const uint32_t run_number = 0);
-    void stop_run(nlohmann::json &resp);
+    int config(nlohmann::json &conf, nlohmann::json &resp);
+    int start_run(nlohmann::json &resp, const uint32_t run_number = 0);
+    int stop_run(nlohmann::json &resp);
     void get_status(nlohmann::json &resp) { }
     void add_feedback(nlohmann::json &resp, const std::string type, const std::string msg);
 

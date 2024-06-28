@@ -42,12 +42,12 @@ namespace cib
     /**
      * Init is responsible for intiializing everything after the host is set
      */
-    virtual void init();
-    virtual void start_run(const uint32_t run_number);
-    virtual void stop_run();
+    virtual int init();
+    virtual int start_run(const uint32_t run_number);
+    virtual int stop_run();
 
 
-    bool is_configured() {return (m_state == kReady);}
+    bool is_configured() {return ((m_state == kSet) || (m_state == kReady));}
     bool is_running() {return (m_state == kRunning);}
 
     void get_feedback(std::vector<daq::iols_feedback_msg_t> &msgs);

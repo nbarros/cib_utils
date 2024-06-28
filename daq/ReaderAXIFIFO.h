@@ -37,10 +37,10 @@ namespace cib
     ReaderAXIFIFO& operator= (const ReaderAXIFIFO &other) = delete;
     ReaderAXIFIFO& operator= (ReaderAXIFIFO &&other) = delete;
 
-    void init() override;
+    int init() override;
     // function overloads that implement the specific methods
-    void start_run(const uint32_t run_number) override;
-    void stop_run() override;
+    int start_run(const uint32_t run_number) override;
+    int stop_run() override;
 
 
 private:

@@ -11,7 +11,7 @@
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <json.hpp>
-#include <ReaderBase.h>
+#include <ReaderAXIFIFO.h>
 #include <memory>
 #include <sstream>
 
@@ -33,8 +33,8 @@ namespace cib
                             ,m_control_thread(nullptr)
                             {
 
-    m_reader = new ReaderBase(simulation);
-
+    //m_reader = new ReaderBase(simulation);
+    m_reader = new ReaderAXIFIFO();
                             }
 
   Handler::~Handler ()
@@ -121,7 +121,7 @@ namespace cib
     while (!m_stop_running.load())
     {
       SPDLOG_INFO("Initiating the control listener");
-
+      int ret = 0;
       // open the socket for listening
 
       /**
@@ -219,7 +219,11 @@ namespace cib
               SPDLOG_DEBUG("Received a config request\n");
 
               // call the configurator
-              config(request.at("config"),resp);
+              ret = config(request.at("config"),resp);
+              if (ret)
+              {
+                had_error = true;
+              }
             }
             else if (cmd == std::string("start_run"))
             {
@@ -227,13 +231,21 @@ namespace cib
               SPDLOG_DEBUG("Received a run start request\n");
               uint32_t run_number = request.at("run_number").get<uint32_t>();
               SPDLOG_DEBUG("Starting run {0}",run_number);
-              start_run(resp,run_number);
+              ret = start_run(resp,run_number);
+              if (ret)
+              {
+                had_error = true;
+              }
               SPDLOG_TRACE("Feedback from Received a run start request [{}]",resp.dump());
             }
             else if (cmd == std::string("stop_run"))
             {
               SPDLOG_DEBUG("Received a run stop request\n");
-              stop_run(resp);
+              ret = stop_run(resp);
+              if (ret)
+              {
+                had_error = true;
+              }
               SPDLOG_TRACE("Feedback from Received a run stop request [{}]",resp.dump());
             }
             else
@@ -243,6 +255,7 @@ namespace cib
               std::stringstream msg("");
               msg << "Unknown command : " << cmd;
               add_feedback(resp,"ERROR",msg.str());
+              had_error = true;
             }
             if (m_control_error.load())
             {
@@ -374,22 +387,23 @@ namespace cib
     SPDLOG_INFO("Leaving the control listener");
   }
 
-  void Handler::config(nlohmann::json &conf, nlohmann::json &resp)
+  int Handler::config(nlohmann::json &conf, nlohmann::json &resp)
   {
     bool had_error = false;
+    int ret = 0;
     // refuse the configure if we are running
     if (m_reader->is_running())
     {
       add_feedback(resp,"ERROR","CIB is taking data");
       SPDLOG_ERROR("Already taking data");
-      return;
+      return 1;
     }
     // there isn't much to be configured by the DAQ.
     // all we really care is to know where to send the data
-    nlohmann::json receiver = conf.at("cib").at("sockets").at("receiver");
+    nlohmann::json receiver = conf.at("sockets").at("receiver");
     try
     {
-      int ret = m_reader->set_eth_receiver(receiver.at("host").get<std::string>(),receiver.at("port").get<unsigned int>());
+      ret = m_reader->set_eth_receiver(receiver.at("host").get<std::string>(),receiver.at("port").get<unsigned int>());
       if (ret)
       {
         SPDLOG_ERROR("Failed to configure reader");
@@ -435,42 +449,58 @@ namespace cib
     {
       add_feedback(resp,"ERROR","CIB interface NOT configured");
       SPDLOG_ERROR("CIB interface NOT configured");
+      return 1;
     }
     else
     {
       add_feedback(resp,"INFO","CIB interface configured");
       SPDLOG_INFO("CIB interface configured");
+      return 0;
     }
   }
-  void Handler::start_run(nlohmann::json &resp, const uint32_t run_number)
+  int Handler::start_run(nlohmann::json &resp, const uint32_t run_number)
   {
+    int ret = 0;
     if (!m_reader->is_configured())
     {
       add_feedback(resp,"ERROR","CIB is not yet configured.");
       SPDLOG_ERROR("CIB interface NOT configured yet");
-      return;
+      return 1;
     }
     if (m_reader->is_running())
     {
       add_feedback(resp,"ERROR","CIB is already taking data.");
       SPDLOG_ERROR("CIB is already running");
-      return;
+      return 1;
     }
     SPDLOG_DEBUG("Starting run");
-    m_reader->start_run(run_number);
+    ret = m_reader->start_run(run_number);
+    if (ret)
+    {
+      SPDLOG_ERROR("Failed to start run");
+      return 1;
+    }
     SPDLOG_INFO("Run started");
+    return 0;
   }
-  void Handler::stop_run(nlohmann::json &resp)
+  int Handler::stop_run(nlohmann::json &resp)
   {
+    int ret = 0;
     if (!m_reader->is_running())
     {
       add_feedback(resp,"ERROR","CIB is not running.");
       SPDLOG_ERROR("CIB is not running");
-      return;
+      return 1;
     }
     SPDLOG_DEBUG("Stopping run");
-    m_reader->stop_run();
+    ret = m_reader->stop_run();
+    if (ret)
+    {
+      SPDLOG_ERROR("Failed to stop run");
+      return 1;
+    }
     SPDLOG_INFO("Run Stopped");
+    return 0;
   }
 
   void Handler::add_feedback(nlohmann::json &resp, const std::string type, const std::string msg)

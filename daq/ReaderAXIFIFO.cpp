@@ -23,7 +23,8 @@ namespace cib
 {
 
   ReaderAXIFIFO::ReaderAXIFIFO ()
-      : m_is_ready(false)
+      : m_debug(false)
+        ,m_is_ready(false)
         ,m_receiver_host("")
         ,m_receiver_port(0)
         ,m_axi_dev("/dev/axis_fifo_0x00000000a0000000")
@@ -43,7 +44,30 @@ namespace cib
 
   }
 
-  void ReaderAXIFIFO::init()
+  void ReaderAXIFIFO::reset_daq_run()
+  {
+    // this resets the FIFO
+    uint32_t mask = cib::util::bitmask(26,26);
+    cib::util::reg_write_mask_offset(maddr,0x1,mask,26);
+  }
+
+  void ReaderAXIFIFO::
+
+  void ReaderAXIFIFO::start_daq_run()
+  {
+    uint32_t mask = cib::util::bitmask(26,26);
+    cib::util::reg_write_mask_offset(maddr,0x1,mask,26);
+  }
+
+  void ReaderAXIFIFO::stop_daq_run()
+  {
+    uint32_t mask = cib::util::bitmask(26,26);
+    cib::util::reg_write_mask_offset(maddr,0x0,mask,26);
+  }
+
+
+
+  int ReaderAXIFIFO::init()
   {
     int rc = 0;
     // init the AXI FIFO reading mechanism
@@ -61,14 +85,15 @@ namespace cib
     if (rc)
     {
       spdlog::error("Failed to reset the FIFO");
-      return;
+      return 1;
     }
 
     // we are now ready to read
     m_is_ready = true;
+    return 0;
   }
 
-  void ReaderAXIFIFO::start_run(const uint32_t run_number)
+  int ReaderAXIFIFO::start_run(const uint32_t run_number)
   {
     /**
      * Method of operation:
@@ -81,7 +106,7 @@ namespace cib
     if (!m_is_ready)
     {
       spdlog::error("Failed to start acquisition because the FIFO is not initialized");
-      return;
+      return 1;
     }
 
       // step 1 - establish the connection
@@ -137,12 +162,13 @@ namespace cib
       spdlog::error("IOCTL failure checking AXIS_FIFO_GET_RX_BYTES_READ\n");
     }
     spdlog::info("FIFO report : Received {0} bytes ({1} packets)",bytes_read,pkts_read);
-
+    return 0;
   }
 
-  void ReaderAXIFIFO::stop_run()
+  int ReaderAXIFIFO::stop_run()
   {
     m_take_data.store(true);
+    return 0;
   }
 
   /*
