@@ -19,23 +19,23 @@ namespace cib
 {
 
   Handler::Handler (const bool simulation)
-                          : m_simulation(simulation)
-                            ,m_reader(nullptr)
-                            ,m_control_port(8992)
-                            ,m_control_timeout(10000) // microseconds = 10 ms
-                            ,m_control_init(false)
-                            ,m_control_error(false)
-                            ,m_control_ios()
-                            ,m_control_socket(m_control_ios)
-                            ,m_is_running(false)
-                            ,m_stop_running(false)
-                            ,m_is_listening(false)
-                            ,m_control_thread(nullptr)
-                            {
+                              : m_simulation(simulation)
+                                ,m_reader(nullptr)
+                                ,m_control_port(8992)
+                                ,m_control_timeout(10000) // microseconds = 10 ms
+                                ,m_control_init(false)
+                                ,m_control_error(false)
+                                ,m_control_ios()
+                                ,m_control_socket(m_control_ios)
+                                ,m_is_running(false)
+                                ,m_stop_running(false)
+                                ,m_is_listening(false)
+                                ,m_control_thread(nullptr)
+                                {
 
     //m_reader = new ReaderBase(simulation);
     m_reader = new ReaderAXIFIFO();
-                            }
+                                }
 
   Handler::~Handler ()
   {
@@ -497,12 +497,23 @@ namespace cib
     }
     SPDLOG_DEBUG("Starting run");
     ret = m_reader->start_run(run_number);
+    m_reader->get_feedback(msgs);
+    for (auto entry: msgs)
+    {
+      add_feedback(resp,entry.sev, entry.msg);
+    }
+
     if (ret)
     {
       SPDLOG_ERROR("Failed to start run");
+      add_feedback(resp,"ERROR","Failed to start the run");
       return 1;
     }
-    SPDLOG_INFO("Run started");
+    else
+    {
+      SPDLOG_INFO("Run started");
+      add_feedback(resp,"INFO","Run started");
+    }
     return 0;
   }
   int Handler::stop_run(nlohmann::json &resp)

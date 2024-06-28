@@ -62,7 +62,7 @@ namespace cib
       return;
     }
 
-    SPDLOG_INFO("Initiating ethernet connection : {}:{}",m_receiver_host.c_str(),m_receiver_port);
+    SPDLOG_INFO("Initiating ethernet connection : {0}:{1}",m_receiver_host.c_str(),m_receiver_port);
     // this is a client connection.
     try
     {

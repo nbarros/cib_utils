@@ -24,7 +24,7 @@ namespace cib
 {
 
   ReaderAXIFIFO::ReaderAXIFIFO ()
-      : m_debug(false)
+      : m_debug(true)
         ,m_is_ready(false)
         ,m_receiver_host("")
         ,m_receiver_port(0)
@@ -40,25 +40,25 @@ namespace cib
   {
 
     // map the control register memmory address
-    spdlog::info("Mapping DAQ control register at 0x{0:X}",GPIO_MISC_MEM_LOW);
+    SPDLOG_INFO("Mapping DAQ control register at 0x{0:X}",GPIO_MISC_MEM_LOW);
     m_ctl_reg_addr = cib::util::map_phys_mem(m_dev_mem_fd,GPIO_MISC_MEM_LOW,GPIO_MISC_MEM_LOW+0x1000);
     if (m_ctl_reg_addr)
     {
-      spdlog::debug("Mapped address : 0x{0:X}",m_ctl_reg_addr);
+      SPDLOG_DEBUG("Mapped address : 0x{0:X}",m_ctl_reg_addr);
     }
     else
     {
-      spdlog::error("Failed to map memory. Thi will fail somewhere.");
+      SPDLOG_ERROR("Failed to map memory. Thi will fail somewhere.");
     }
   }
 
   ReaderAXIFIFO::~ReaderAXIFIFO ()
   {
 
-    spdlog::trace("Passing destructor.");
+    SPDLOG_TRACE("Passing destructor.");
     if (m_ctl_reg_addr)
     {
-      spdlog::debug("Unmapping the MM register.");
+      SPDLOG_DEBUG("Unmapping the MM register.");
       cib::util::unmap_mem(m_ctl_reg_addr,0x1000);
       close(m_dev_mem_fd);
     }
@@ -69,7 +69,7 @@ namespace cib
     if (!m_ctl_reg_addr)
     {
       // the memory mapped register is not mapped. Do nothing
-      spdlog::error("Memory not mapped. Doing nothing.");
+      SPDLOG_ERROR("Memory not mapped. Doing nothing.");
       add_feedback("ERROR","Control register not mapped. Doing nothing.");
       return;
     }
@@ -86,11 +86,11 @@ namespace cib
     if (!m_ctl_reg_addr)
     {
       // the memory mapped register is not mapped. Do nothing
-      spdlog::error("Memory not mapped. Doing nothing.");
+      SPDLOG_ERROR("Memory not mapped. Doing nothing.");
       add_feedback("ERROR","Control register not mapped. Doing nothing.");
       return;
     }
-    const uint32_t bit = 25;
+    const uint32_t bit = 26;
 
     uint32_t mask = cib::util::bitmask(bit,bit);
     cib::util::reg_write_mask_offset(m_ctl_reg_addr,0x1,mask,bit);
@@ -101,11 +101,11 @@ namespace cib
     if (!m_ctl_reg_addr)
     {
       // the memory mapped register is not mapped. Do nothing
-      spdlog::error("Memory not mapped. Doing nothing.");
+      SPDLOG_ERROR("Memory not mapped. Doing nothing.");
       add_feedback("ERROR","Control register not mapped. Doing nothing.");
       return;
     }
-    const uint32_t bit = 25;
+    const uint32_t bit = 26;
     uint32_t mask = cib::util::bitmask(bit,bit);
     cib::util::reg_write_mask_offset(m_ctl_reg_addr,0x0,mask,bit);
   }
@@ -122,17 +122,17 @@ namespace cib
     {
       std::ostringstream msg;
       msg << "Failed to open FIFO. Message : " << std::strerror(errno);
-      spdlog::error("Failed to open FIFO. Message : {0}",std::strerror(errno));
+      SPDLOG_ERROR("Failed to open FIFO. Message : {0}",std::strerror(errno));
       add_feedback("ERROR",msg.str());
       m_is_ready = false;
     }
     // -- call a reset FIFO to clear out existing stale content
     // this should have nothing, since the stop procedure also clears out the remaining contents
-    spdlog::trace("Resetting the FIFO");
+    SPDLOG_TRACE("Resetting the FIFO");
     rc = ioctl(m_dev_fd,AXIS_FIFO_RESET_IP);
     if (rc)
     {
-      spdlog::error("Failed to reset the FIFO");
+      SPDLOG_ERROR("Failed to reset the FIFO");
       add_feedback("WARN","Failed to reset the DAQ FIFO");
       return 1;
     }
@@ -148,6 +148,7 @@ namespace cib
     uint32_t run_packets_rx = 0;
     int rc = 0;
     // this is for debug purposes
+    SPDLOG_TRACE("Entering readout loop");
 
     while (m_take_data.load())
     {
@@ -160,11 +161,11 @@ namespace cib
         {
           daq::iols_trigger_t *word;
           word = &(m_eth_packet.word); //reinterpret_cast<daq::iols_trigger_t*>(m_buffer);
-          spdlog::debug("RX Word : TS {0} M1 {1} M2 {2} M3 {3}",word->timestamp,word->get_pos_m1(),word->get_pos_m2(),word->get_pos_m3());
+          SPDLOG_DEBUG("RX Word : TS {0} M1 {1} M2 {2} M3 {3}",word->timestamp,word->get_pos_m1(),word->get_pos_m2(),word->get_pos_m3());
         }
         if (bytes_rx != sizeof(daq::iols_trigger_t))
         {
-          spdlog::error("Mismatch in word size. Expected {0} but got {1}",sizeof(daq::iols_trigger_t));
+          SPDLOG_ERROR("Mismatch in word size. Expected {0} but got {1}",sizeof(daq::iols_trigger_t));
         }
 
         send_data(reinterpret_cast<uint8_t*>(&m_eth_packet),sizeof(m_eth_packet));
@@ -175,24 +176,24 @@ namespace cib
       else
       {
         // there is nothing. It likely timed out
-        spdlog::trace("Returned {0}",bytes_rx);
+        //SPDLOG_TRACE("Returned {0}",bytes_rx);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
     }
-    spdlog::info("Run stopped. Received {0} bytes ({1} packets)",bytes_rx,run_packets_rx);
-    spdlog::info("Crosschecking with FIFO reports");
+    SPDLOG_INFO("Run stopped. Received {0} bytes ({1} packets)",bytes_rx,run_packets_rx);
+    SPDLOG_INFO("Crosschecking with FIFO reports");
     uint32_t pkts_read, bytes_read;
     rc = ioctl(m_dev_fd,AXIS_FIFO_GET_RX_PKTS_READ,&pkts_read);
     if (rc)
     {
-      spdlog::error("IOCTL failure checking AXIS_FIFO_GET_RX_PKTS_READ");
+      SPDLOG_ERROR("IOCTL failure checking AXIS_FIFO_GET_RX_PKTS_READ");
     }
     rc = ioctl(m_dev_fd,AXIS_FIFO_GET_RX_BYTES_READ,&bytes_read);
     if (rc)
     {
-      spdlog::error("IOCTL failure checking AXIS_FIFO_GET_RX_BYTES_READ\n");
+      SPDLOG_ERROR("IOCTL failure checking AXIS_FIFO_GET_RX_BYTES_READ\n");
     }
-    spdlog::info("FIFO report : Received {0} bytes ({1} packets)",bytes_read,pkts_read);
+    SPDLOG_INFO("FIFO report : Received {0} bytes ({1} packets)",bytes_read,pkts_read);
 
   }
 
@@ -208,7 +209,7 @@ namespace cib
 
     if (!m_is_ready)
     {
-      spdlog::error("Failed to start acquisition because the FIFO is not initialized");
+      SPDLOG_ERROR("Failed to start acquisition because the FIFO is not initialized");
       add_feedback("ERROR","FIFO is not initialized.");
       return 1;
     }
@@ -217,14 +218,17 @@ namespace cib
     init_transmitter();
     // reset the DAQ FIFO
     reset_daq_fifo();
+    SPDLOG_TRACE("FIFO reset");
+
     // set the data taking flag
+    SPDLOG_TRACE("Preparing to start taking data");
     m_take_data.store(true);
 
     // step 2 - start reading
     m_readout_thread = std::unique_ptr<std::thread>(new std::thread(&ReaderAXIFIFO::readout_task,this));
     if (m_readout_thread.get() == nullptr)
     {
-      spdlog::error("Failed to launch readout thread.");
+      SPDLOG_ERROR("Failed to launch readout thread.");
       add_feedback("ERROR","Failed to launch readout thread");
       return 1;
     }
@@ -240,7 +244,7 @@ namespace cib
     //
     if (m_state != kRunning)
     {
-      spdlog::error("Failed to stop acquisition because we are not running");
+      SPDLOG_ERROR("Failed to stop acquisition because we are not running");
       add_feedback("ERROR","We are not in a running state");
       return 1;
     }
@@ -286,7 +290,7 @@ namespace cib
 
     if (!m_transmit_ready)
     {
-      spdlog::error("Transmitter is not ready");
+      SPDLOG_ERROR("Transmitter is not ready");
       // FIXME: Add a way to stop acquisition
       m_take_data.store(false);
       return;
