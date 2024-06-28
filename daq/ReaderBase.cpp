@@ -130,7 +130,7 @@ namespace cib
       bool has_error = false;
       // we also accept to send data without running state, even though that may give trouble
       // but that is irrelevant for this method
-      if ((m_state ==  kReady) || (m_state == kRunning))
+      if ((m_state !=  kReady) && (m_state != kRunning))
       {
         SPDLOG_ERROR("Socket is not in a usable state");
         daq::iols_feedback_msg_t msg;
