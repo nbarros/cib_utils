@@ -268,7 +268,7 @@ namespace i2c {
                                                       dac.channel,dac.addr);
       printf(" * Full buffer :\n");
       for (idx = 0; idx < bytes; idx++) {
-        printf(" Byte %u : 0x%X\n",idx,buffer[idx]);
+        printf(" Byte %lu : 0x%X\n",idx,buffer[idx]);
       }
       printf("==================================================================\n");
     }
@@ -281,7 +281,7 @@ namespace i2c {
 
     wr_bytes = write(dac.fd,buffer,bytes);
     if (wr_bytes != bytes) {
-      printf("i2c_write : Failed to write the message to DAC %i. Received %i (expected %u).\n",dac.channel,wr_bytes,bytes);
+      printf("i2c_write : Failed to write the message to DAC %i. Received %li (expected %lu).\n",dac.channel,wr_bytes,bytes);
       return 0;
     }
     return 1;
@@ -320,7 +320,7 @@ namespace i2c {
 
     rd_bytes = read(dac.fd,buffer,bytes);
     if (rd_bytes != bytes) {
-      printf("i2c_read : Failed to read the register from DAC %i. Received %i (expected %u).\n",dac.channel,rd_bytes,bytes);
+      printf("i2c_read : Failed to read the register from DAC %i. Received %li (expected %lu).\n",dac.channel,rd_bytes,bytes);
       return 0;
     }
     if (debug) {
@@ -492,11 +492,11 @@ void dac_galore(){
   c.cmd.command = I2C_RD_N;
 
   for (size_t i = 0; i < ndacs; i++) {
-    printf("DAC %u : ",i);
+    printf("DAC %lu : ",i);
     for (size_t j = 0; j < nchannels; j++) {
       c.cmd.channel = j;
       if (!i2c::get_dac_level(dev[i],c,l,false)) {
-        printf("Failed to read channel [%u:%u]\n",i,j);
+        printf("Failed to read channel [%lu:%lu]\n",i,j);
         return;
       }
       printf("%04u ",l.get_int_level());
@@ -508,7 +508,7 @@ void dac_galore(){
 
   printf("\nInitializing random settings...\n");
   for (size_t i = 0; i < ndacs; i++) {
-    printf("DAC %u : ",i);
+    printf("DAC %lu : ",i);
     for (size_t j = 0; j < nchannels; j++) {
       threshold_table[i][j] = (uint16_t) (rand() % 4095);
       printf("%04u ",threshold_table[i][j]);
@@ -523,7 +523,7 @@ void dac_galore(){
       c.cmd.channel = j;
       l.set_int_level(threshold_table[i][j]);
       if (!i2c::set_dac_level(dev[i],c,l,false)) {
-        printf("Failed to set channel [%u:%u]\n",i,j);
+        printf("Failed to set channel [%lu:%lu]\n",i,j);
         return;
       }
       // -- sleep a short while to make sure that we are not updating this too fast
@@ -534,11 +534,11 @@ void dac_galore(){
   printf("\nPerforming consistency check...: [O : OK; X : Fail]\n");
   c.cmd.command = I2C_RD_N;
   for (size_t i = 0; i < ndacs; i++) {
-    printf("DAC %u : ",i);
+    printf("DAC %lu : ",i);
     for (size_t j = 0; j < nchannels; j++) {
       c.cmd.channel = j;
       if (!i2c::get_dac_level(dev[i],c,l,false)) {
-        printf("Failed to read channel [%u:%u]\n",i,j);
+        printf("Failed to read channel [%lu:%lu]\n",i,j);
         return;
       }
       printf("%04u(%s) ",l.get_int_level(),(l.get_int_level() == threshold_table[i][j])?"O":"X");
