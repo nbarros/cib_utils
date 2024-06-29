@@ -5,7 +5,7 @@ project (cib_tools
 	VERSION 1.0
 	DESCRIPTION "CIB Utilities Project")
 
-add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+#add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
 # Do not request this. Instead use the one out of contrib
 find_package(spdlog REQUIRED)

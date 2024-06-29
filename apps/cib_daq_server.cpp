@@ -24,7 +24,8 @@
 #ifdef SPDLOG_ACTIVE_LEVEL
 #undef SPDLOG_ACTIVE_LEVEL
 #endif
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+//#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_INFO
 
 // the trigger generator pushes a piece of data every 100 ms
 
@@ -55,13 +56,39 @@ int main(int argc, char* argv[])
 
   spdlog::set_pattern("[%s:%!:%#][%^%L%$] [thread %t] %v");
 
-  spdlog::set_level(spdlog::level::trace); // Set global log level to debug
+  spdlog::set_level(spdlog::level::info); // Set global log level to debug
   // if the SPDLOG_LEVEL variable is set, it overrides
   //SPDLOG_LEVEL=info,mylogger=trace
 
   spdlog::cfg::load_env_levels();
   // if the level was not
 
+  int c;
+  opterr = 0;
+  int report_level = SPDLOG_LEVEL_INFO;
+  while ((c = getopt (argc, argv, "v")) != -1)
+  {
+    switch (c)
+      {
+      case 'v':
+        if (report_level > 0)
+        {
+          report_level--;
+        }
+        break;
+      default: /* ? */
+        spdlog::warn("Usage: cib_manager [-v]  (repeated flags further increase verbosity)");
+        return 1;
+      }
+  }
+  if (report_level != SPDLOG_LEVEL_INFO)
+  {
+    spdlog::set_level(static_cast<spdlog::level::level_enum>(report_level)); // Set global log level to info
+  }
+
+  spdlog::info("Log level: {0} : {1}",static_cast<int>(spdlog::get_level()),spdlog::level::to_string_view(spdlog::get_level()).data());
+  spdlog::trace("Just testing a trace");
+  spdlog::debug("Just testing a debug");
   SPDLOG_INFO( "spdlog active level {}",SPDLOG_ACTIVE_LEVEL);
 
 //  SPDLOG_TRACE( "trace message %i",12);
