@@ -146,6 +146,7 @@ namespace cib
   {
     ssize_t bytes_rx = 0;
     uint32_t run_packets_rx = 0;
+    uint32_t run_bytes_rx = 0;
     int rc = 0;
     // this is for debug purposes
     SPDLOG_TRACE("Entering readout loop");
@@ -172,6 +173,7 @@ namespace cib
         run_packets_rx++;
         m_tot_packets_rx++;
         m_tot_bytes_rx += bytes_rx;
+        run_bytes_rx += bytes_rx;
       }
       else
       {
@@ -180,7 +182,7 @@ namespace cib
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
     }
-    SPDLOG_INFO("Run stopped. Received {0} bytes ({1} packets)",bytes_rx,run_packets_rx);
+    SPDLOG_INFO("Run stopped. Received {0} bytes ({1} packets)",run_bytes_rx,run_packets_rx);
     SPDLOG_INFO("Crosschecking with FIFO reports");
     uint32_t pkts_read, bytes_read;
     rc = ioctl(m_dev_fd,AXIS_FIFO_GET_RX_PKTS_READ,&pkts_read);
