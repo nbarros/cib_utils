@@ -1,0 +1,15 @@
+[Unit]
+Description=CIB DAQ server service
+After=network.target
+Wants=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=1
+; User=
+ExecStart=/opt/cib_util/build/apps/cib_daq_server 
+
+[Install]
+WantedBy=multi-user.target
