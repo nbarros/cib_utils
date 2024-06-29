@@ -70,6 +70,9 @@ int main(int argc, char* argv[])
   {
     switch (c)
       {
+      case 'h':
+        spdlog::warn("Usage: cib_daq_server [-v]  (repeated flags further increase verbosity)");
+        break;
       case 'v':
         if (report_level > 0)
         {
@@ -77,7 +80,7 @@ int main(int argc, char* argv[])
         }
         break;
       default: /* ? */
-        spdlog::warn("Usage: cib_manager [-v]  (repeated flags further increase verbosity)");
+        spdlog::warn("Usage: cib_daq_server [-v]  (repeated flags further increase verbosity)");
         return 1;
       }
   }
