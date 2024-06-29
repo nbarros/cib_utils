@@ -33,3 +33,5 @@
 /.cproject
 /.project
 /build/
+.Xil/
+/.Xil/
