@@ -140,11 +140,11 @@ namespace cib
         return 1;
       }
 
-      if (!m_receiver_init)
-      {
-        spdlog::error("Transmitter is not ready");
-        return 1;
-      }
+//      if (!m_receiver_init)
+//      {
+//        spdlog::error("Transmitter is not ready");
+//        return 1;
+//      }
       boost::system::error_code boost_error;
 
       try
