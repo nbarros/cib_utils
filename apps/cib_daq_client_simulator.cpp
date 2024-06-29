@@ -129,7 +129,7 @@ void receiver()
         cib::daq::iols_trigger_t *word;
         word = &(packet.word); //reinterpret_cast<daq::iols_trigger_t*>(m_buffer);
         SPDLOG_DEBUG("RX Word : TS {0} M1 {1} M2 {2} M3 {3}",word->timestamp,word->get_pos_m1(),word->get_pos_m2(),word->get_pos_m3());
-        continue ;
+        //continue ;
       }
       if ( receiving_error == boost::asio::error::eof)
       {
