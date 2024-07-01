@@ -13,5 +13,5 @@
 	shallow = true
 [submodule "contrib/json"]
 	path = contrib/json
-	url = git@github.com:nlohmann/json.git
+	url = https://github.com/nlohmann/json.git
 	shallow = true
