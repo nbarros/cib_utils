@@ -4,8 +4,9 @@ CIB Utilities. Various tools and libraries used in the CIB code base.
 # Changelog
 
 * 30/06/2024 : Nuno Barros <barros@lip.pt>
+
 				Implemented working version of the cib_daq_server, along with the respective service.
-				Too be deployed in the production CIBs soon.
+				To be deployed in the production CIBs soon.
 
 # Module descrition
 ## axi_fifo

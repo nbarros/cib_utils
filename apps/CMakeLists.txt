@@ -33,6 +33,15 @@ target_include_directories(cib_daq_client_simulator PUBLIC ${PROJECT_SOURCE_DIR}
 target_include_directories(cib_daq_client_simulator PUBLIC ${Boost_INCLUDE_DIRS})
 target_link_libraries(cib_daq_client_simulator cib_daq spdlog  ${Boost_LIBRARIES} pthread common readline)
 
+add_executable(cib_log_server cib_log_server.cpp)
+target_compile_features(cib_log_server PUBLIC cxx_std_11)
+target_compile_definitions(cib_log_server PUBLIC SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+set_target_properties(cib_log_server PROPERTIES CXX_STANDARD_REQUIRED ON)
+set_target_properties(cib_log_server PROPERTIES CXX_EXTENSIONS OFF)
+target_include_directories(cib_log_server PUBLIC ${PROJECT_SOURCE_DIR}/common)
+target_include_directories(cib_log_server PUBLIC ${PROJECT_SOURCE_DIR}/axi_fifo)
+target_link_libraries(cib_log_server spdlog pthread common)
+
 #target_include_directories(cib_daq_interface PRIVATE ${PROJECT_SOURCE_DIR}/cib_debug)
 #target_include_directories(cib_daq_interface PUBLIC ${ZeroMQ_INCLUDE_DIR})
 #target_include_directories(cib_daq_interface PRIVATE ${PROJECT_SOURCE_DIR}/i2c)

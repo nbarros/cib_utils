@@ -44,7 +44,14 @@
 #define GPIO_CH_OFFSET      0x8
 
 #define AXIS_FIFO_DAQ  0x00A0000000
+#define AXIS_FIFO_DAQ_DEV "/dev/axis_fifo_0x00000000a0000000"
+
 #define AXIS_FIFO_PTR  0x00A0050000
+#define AXIS_FIFO_PTR_DEV "/dev/axis_fifo_0x00000000a0050000"
+
+#define AXIS_FIFO_LOG  0x00A0070000
+#define AXIS_FIFO_LOG_DEV "/dev/axis_fifo_0x00000000a0070000"
+
 
 #define PAGE_SIZE     4096
 
