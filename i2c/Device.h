@@ -71,6 +71,7 @@ namespace cib
       int set_dev_number(const int &dev);
       int open_device();
       int close_device();
+      bool is_open() {return m_is_open;}
       int write_register(uint8_t addr, uint8_t data, uint8_t mask = 0xFF);
       int read_register(uint8_t addr, uint8_t &data);
 

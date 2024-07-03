@@ -1631,6 +1631,13 @@ void print_help()
   spdlog::info("    Enable/disable laser QSWITCH ");
   spdlog::info("  qswitch_config [width delay]");
   spdlog::info("    Configures the QSWITCH part of the laser");
+  spdlog::info("  shutter [state]");
+  spdlog::info("    Open/Close the external shutter (0: OPEN, 1: CLOSE)");
+  spdlog::info("  read <register>");
+  spdlog::info("    Read a mapped register. Options: misc, laser, align, pdts, mon_0, mon_1, motor_1, motor_2, motor_3");
+  spdlog::info("  dna");
+  spdlog::info("    Read DNA register of the board");
+
   spdlog::info("  help");
   spdlog::info("    Print this help");
   spdlog::info("  exit");
