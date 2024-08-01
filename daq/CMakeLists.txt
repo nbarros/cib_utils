@@ -7,6 +7,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 
 add_library(cib_daq SHARED Handler.cpp ReaderBase.cpp ReaderAXIFIFO.cpp)
+target_compile_definitions(cib_daq PUBLIC SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 target_include_directories(cib_daq PUBLIC ${PROJECT_SOURCE_DIR}/contrib/json/include/nlohmann)
 target_include_directories(cib_daq PUBLIC ${PROJECT_SOURCE_DIR}/contrib/json/include)
 target_include_directories(cib_daq PUBLIC ${PROJECT_SOURCE_DIR}/common)

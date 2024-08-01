@@ -408,6 +408,7 @@ namespace cib
       SPDLOG_ERROR("Already taking data");
       return 1;
     }
+    SPDLOG_DEBUG("Configuration fragment : \n {0}",conf.dump());
     // there isn't much to be configured by the DAQ.
     // all we really care is to know where to send the data
     nlohmann::json receiver = conf.at("sockets").at("receiver");
