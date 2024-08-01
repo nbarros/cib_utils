@@ -96,7 +96,10 @@ int get_dna(uintptr_t &addr1,uintptr_t &addr2);
 int run_command(int argc, char** argv);
 void print_help();
 void read_register(mapped_mem_t &reg);
-
+// DAQ subsystem
+int daq_reset(uintptr_t &addr);
+int daq_fifo_get_state(uintptr_t &addr, uint32_t &state);
+int daq_fifo_set_state(uintptr_t &addr, uint32_t &state);
 
 void read_register(mapped_mem_t &reg)
 {
@@ -181,6 +184,17 @@ int sys_reset(uintptr_t &addr)
   cib::util::reg_write_mask_offset(maddr,0x1,mask,27);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
   cib::util::reg_write_mask_offset(maddr,0x0,mask,27);
+
+  return 0;
+}
+int daq_reset(uintptr_t &addr)
+{
+  spdlog::info("Resetting the DAQ subsystem");
+  uintptr_t maddr = addr +(GPIO_CH_OFFSET*0);
+  uint32_t mask = cib::util::bitmask(25,25);
+  cib::util::reg_write_mask_offset(maddr,0x1,mask,25);
+  std::this_thread::sleep_for(std::chrono::microseconds(10));
+  cib::util::reg_write_mask_offset(maddr,0x0,mask,25);
 
   return 0;
 }
@@ -1340,6 +1354,17 @@ int run_command(int argc, char** argv)
     }
     return 0;
   }
+  else if (cmd == "daq_reset")
+  {
+    spdlog::info("Resetting the DAQ data chain and queues");
+    int res = daq_reset(g_cib_mem.gpio_misc.v_addr);
+    if (res != 0)
+    {
+      spdlog::error("Failed to reset system");
+    }
+    return 0;
+  }
+
   else if (cmd == "dac")
   {
 
@@ -1604,6 +1629,8 @@ void print_help()
   spdlog::info("    Enable pulser 10 Hz pulser trigger");
   spdlog::info("  daq_enable [state]");
   spdlog::info("    Enable DAQ trigger stream");
+  spdlog::info("  daq_reset");
+  spdlog::info("    Resets the AXI data fifos");
   spdlog::info("  sys_reset");
   spdlog::info("    Resets everything that is not on the PDTS system");
   spdlog::info("  pdts_reset");

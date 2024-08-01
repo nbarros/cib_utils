@@ -152,6 +152,8 @@ namespace cib
     int rc = 0;
     // this is for debug purposes
     SPDLOG_TRACE("Entering readout loop");
+    //FIXME: Remove this
+    m_debug = true;
 
     while (m_take_data.load())
     {
@@ -170,7 +172,7 @@ namespace cib
         {
           SPDLOG_ERROR("Mismatch in word size. Expected {0} but got {1}",sizeof(daq::iols_trigger_t));
         }
-
+        SPDLOG_TRACE("Sending word");
         rc = send_data(reinterpret_cast<uint8_t*>(&m_eth_packet),sizeof(m_eth_packet));
         if (rc != 0)
         {
@@ -228,8 +230,10 @@ namespace cib
     }
 
     // step 1 - establish the connection to the receiver
+    SPDLOG_TRACE("Initializing transmitter");
     init_transmitter();
     // reset the DAQ FIFO
+    SPDLOG_TRACE("Resetting DAQ FIFO");
     reset_daq_fifo();
     SPDLOG_TRACE("FIFO reset");
 
@@ -246,6 +250,9 @@ namespace cib
       return 1;
     }
     // step 3 - now activate the DAQ fifo
+    SPDLOG_TRACE("Starting data taking run");
+
+    m_run_enable.store(true);
     start_daq_run();
 
     m_state = kRunning;
@@ -268,7 +275,7 @@ namespace cib
 
     m_take_data.store(false);
     // wait for a sec to allow the data taking to stop
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     // join the readout thread
     if (m_readout_thread.get()->joinable())
@@ -286,6 +293,9 @@ namespace cib
       //SPDLOG_TRACE("Thread is now dead.");
       m_readout_thread = nullptr;
     }
+    m_run_enable.store(false);
+
+    m_state = kReady;
 
     // terminate the transmission socket
     term_transmitter();
