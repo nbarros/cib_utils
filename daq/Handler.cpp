@@ -269,13 +269,15 @@ namespace cib
             if (m_control_error.load())
             {
               nlohmann::json entry;
-              entry["type"] = "ERROR";
-              entry["message"] = "Failed to execute command";
-              resp["feedback"].push_back(entry);
+              add_feedback(resp,"ERROR","Failed to execute request");
+//              entry["type"] = "ERROR";
+//              entry["message"] = "Failed to execute command";
+//              resp["feedback"].push_back(entry);
             }
           }
           else
           {
+
             nlohmann::json entry;
             entry["type"] = "ERROR";
             entry["message"] = "Unknown request";
@@ -413,35 +415,23 @@ namespace cib
     nlohmann::json receiver = conf.at("sockets").at("receiver");
     try
     {
-      ret = m_reader->set_eth_receiver(receiver.at("host").get<std::string>(),receiver.at("port").get<unsigned int>());
+      ret = m_reader->set_eth_receiver(receiver.at("host").get<std::string>(),
+                                       receiver.at("port").get<unsigned int>());
       if (ret)
       {
         SPDLOG_ERROR("Failed to configure reader");
-        // grab all the feedback from the reader
-        std::vector<daq::iols_feedback_msg_t> msgs;
-        m_reader->get_feedback(msgs);
-        for (auto entry: msgs)
-        {
-          add_feedback(resp,entry.sev, entry.msg);
-        }
         had_error = true;
       }
       else
       {
         SPDLOG_INFO("CIB configured");
       }
+      // grab all the feedback from the reader
       SPDLOG_DEBUG("Calling init");
       ret = m_reader->init();
       if (ret)
       {
         SPDLOG_ERROR("Failed to initialize reader");
-        // grab all the feedback from the reader
-        std::vector<daq::iols_feedback_msg_t> msgs;
-        m_reader->get_feedback(msgs);
-        for (auto entry: msgs)
-        {
-          add_feedback(resp,entry.sev, entry.msg);
-        }
         had_error = true;
       }
       else
@@ -473,6 +463,15 @@ namespace cib
       add_feedback(resp,"ERROR",msg.str());
       SPDLOG_ERROR("Unknown exception");
     }
+    // -- grab any feedback that may exist in the reader
+    // grab all the feedback from the reader
+    std::vector<daq::iols_feedback_msg_t> msgs;
+    m_reader->get_feedback(msgs);
+    for (auto entry: msgs)
+    {
+      add_feedback(resp,entry.sev, entry.msg);
+    }
+    // now return according to the situation
     if (had_error)
     {
       add_feedback(resp,"ERROR","CIB interface NOT configured");
@@ -486,6 +485,7 @@ namespace cib
       return 0;
     }
   }
+
   int Handler::start_run(nlohmann::json &resp, const uint32_t run_number)
   {
     int ret = 0;
@@ -534,13 +534,25 @@ namespace cib
     }
     SPDLOG_DEBUG("Stopping run");
     ret = m_reader->stop_run();
+    std::vector<daq::iols_feedback_msg_t> msgs;
+    m_reader->get_feedback(msgs);
+    for (auto entry: msgs)
+    {
+      add_feedback(resp,entry.sev, entry.msg);
+    }
+
     if (ret)
     {
       SPDLOG_ERROR("Failed to stop run");
+      add_feedback(resp,"ERROR","Failed to stop run. This will almost certainly cause trouble in the future.");
       return 1;
     }
-    SPDLOG_INFO("Run Stopped");
-    return 0;
+    else
+    {
+      SPDLOG_INFO("Run Stopped");
+      add_feedback(resp,"INFO","Run stopped.");
+      return 0;
+    }
   }
 
   void Handler::add_feedback(nlohmann::json &resp, const std::string type, const std::string msg)

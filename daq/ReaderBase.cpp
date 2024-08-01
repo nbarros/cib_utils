@@ -146,14 +146,17 @@ namespace cib
         if ( boost_error == boost::asio::error::eof)
         {
           std::string error_message = "Socket closed: " + boost_error.message();
-          SPDLOG_ERROR("BOOST ASIO Connection lost: {0}\n",error_message.c_str());
+          SPDLOG_ERROR("BOOST ASIO Connection lost: {0}",error_message.c_str());
+          add_feedback("ERROR",error_message);
           has_error = true;
         }
 
         if ( boost_error )
         {
           std::string error_message = "Transmission failure: " + boost_error.message();
-          SPDLOG_ERROR("BOOST non-descript error: {0}\n",error_message.c_str());
+          SPDLOG_ERROR("BOOST non-descript error: {0}",error_message.c_str());
+          add_feedback("ERROR",error_message);
+
           has_error = true;
         }
         if (!has_error)
@@ -165,11 +168,17 @@ namespace cib
       catch(std::exception &e)
       {
         SPDLOG_ERROR("Caught an exception: {0}",e.what());
+        std::ostringstream error_message("");
+        error_message << "Caught STL exception : " << e.what();
+        add_feedback("ERROR",error_message.str());
+
         return 1;
       }
       catch(...)
       {
-        SPDLOG_ERROR("Caught unknown exception\n");
+        SPDLOG_ERROR("Caught unknown exception");
+        add_feedback("ERROR","Caught unknown exception");
+
         return 1;
       }
       if (has_error)
