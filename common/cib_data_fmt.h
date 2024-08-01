@@ -13,6 +13,7 @@ extern "C"
 }
 #include <cstdint>
 #include <cstddef>
+#include <string>
 
 using std::size_t;
 
