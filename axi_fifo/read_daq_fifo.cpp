@@ -35,6 +35,7 @@
 #include <cib_mem.h>
 #include <cib_data_fmt.h>
 #include <mem_utils.h>
+#include <cib_data_utils.h>
 
 /*----------------------------------------------------------------------------
  * Internal Definitions
@@ -163,7 +164,7 @@ static void *read_from_fifo_thread_fn(void *data)
       word = reinterpret_cast<iols_trigger_t*>(buf);
       printf("TS %" PRIu64 " m1 %i m2 %i m3 %i \n"
              ,word->timestamp
-             ,word->get_pos_m1(), word->get_pos_m2(), word->get_pos_m3());
+             ,cib::data::get_m1(*word), cib::data::get_m2(*word), cib::data::get_m3(*word));
 
       packets_rx++;
     }

@@ -193,6 +193,7 @@ namespace cib
       // now enter the loop that keeps listening to this specific socket
       while (!m_stop_running.load())
       {
+        nlohmann::json resp;
 
         // the tricky part of this kind of operation is that we do not know
         // exactly what /how many bytes are we receiving
@@ -215,7 +216,6 @@ namespace cib
         bool had_error = false;
         std::stringstream raw_request( std::string(req_buff.begin(), req_buff.end() ) ) ;
         SPDLOG_DEBUG("Unformatted message: [{}]",raw_request.str());
-        nlohmann::json resp;
         try
         {
           nlohmann::json request ;

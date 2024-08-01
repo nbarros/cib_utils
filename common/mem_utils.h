@@ -12,6 +12,7 @@
 #include <string>
 
 using std::size_t;
+
 namespace cib
 {
   namespace util
