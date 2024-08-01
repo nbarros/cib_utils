@@ -84,6 +84,8 @@ void read_task()
   spdlog::debug("Initiating read task");
   g_keep_reading.store(true);
   int packets_rx = 0;
+  int bytes_rx = 0;
+  int read_bytes = 0;
   cib::daq::iols_trigger_t word;
 
   char file_name[200] = "" ;
@@ -103,14 +105,16 @@ void read_task()
 
   while (g_keep_reading.load())
   {
-    packets_rx = read(g_dev_fd, &word, sizeof(word));
-    if (packets_rx > 0)
+    read_bytes = read(g_dev_fd, &word, sizeof(word));
+    if (read_bytes > 0)
     {
       // received a word
+      spdlog::trace("Got a word. TS {0}",word.timestamp);
       // -- flush the file each time. It does not cost much and avoids data loss due to caching
       out_file.write(reinterpret_cast<const char*>(&word),sizeof(cib::daq::iols_trigger_t));
       out_file.flush();
       packets_rx++;
+      bytes_rx += read_bytes;
     }
     else
     {
@@ -119,7 +123,7 @@ void read_task()
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
-  spdlog::info("Left the reading loop. Closing the output file {1} with {0} entries",packets_rx,global_name);
+  spdlog::info("Left the reading loop. Closing the output file {1} with {0} entries ({2} bytes) ",packets_rx,global_name,bytes_rx);
   out_file.close();
   spdlog::info("Resetting the FIFO in preparation for future runs");
   int ret = ioctl(g_dev_fd, AXIS_FIFO_RESET_IP);
