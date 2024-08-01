@@ -160,7 +160,7 @@ namespace cib
         if ( boost_error )
         {
           std::string error_message = "Transmission failure: " + boost_error.message();
-          SPDLOG_ERROR("BOOST non-descript error: %s\n",error_message.c_str());
+          SPDLOG_ERROR("BOOST non-descript error: {0}\n",error_message.c_str());
           has_error = true;
         }
         if (!has_error)

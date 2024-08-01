@@ -20,3 +20,8 @@ add_executable(test_struct_management EXCLUDE_FROM_ALL test_struct_management.cp
 target_include_directories(test_struct_management PUBLIC ${PROJECT_SOURCE_DIR}/contrib)
 target_include_directories(test_struct_management PUBLIC ${PROJECT_BINARY_DIR})
 
+add_executable(test_namespace EXCLUDE_FROM_ALL test_namespace.cpp)
+target_compile_features(test_namespace PUBLIC cxx_std_11)
+target_include_directories(test_namespace PUBLIC ${PROJECT_SOURCE_DIR}/common)
+target_include_directories(test_namespace PUBLIC ${PROJECT_BINARY_DIR})
+

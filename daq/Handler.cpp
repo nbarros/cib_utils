@@ -202,7 +202,13 @@ namespace cib
         if (error)
         {
           // if there was an error, exit the loop
-          SPDLOG_INFO("Error reading from socket.");
+          SPDLOG_INFO("Error reading from socket. Forcing a stop run for safety");
+          // -- a caveats: if the connection is lost while running,
+          // one needs to tell the reader to reset itself and stop taking data
+
+          stop_run(resp);
+
+
           break;
           // the specific error will be parsed outside the loop
         }

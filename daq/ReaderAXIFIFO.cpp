@@ -169,11 +169,20 @@ namespace cib
           SPDLOG_ERROR("Mismatch in word size. Expected {0} but got {1}",sizeof(daq::iols_trigger_t));
         }
 
-        send_data(reinterpret_cast<uint8_t*>(&m_eth_packet),sizeof(m_eth_packet));
-        run_packets_rx++;
-        m_tot_packets_rx++;
-        m_tot_bytes_rx += bytes_rx;
-        run_bytes_rx += bytes_rx;
+        rc = send_data(reinterpret_cast<uint8_t*>(&m_eth_packet),sizeof(m_eth_packet));
+        if (rc != 0)
+        {
+          // failed transmission. Stop acquisition
+          SPDLOG_ERROR("Failed to send data. Stopping acquisition");
+          m_take_data.store(false);
+        }
+        else
+        {
+          run_packets_rx++;
+          m_tot_packets_rx++;
+          m_tot_bytes_rx += bytes_rx;
+          run_bytes_rx += bytes_rx;
+        }
       }
       else
       {
