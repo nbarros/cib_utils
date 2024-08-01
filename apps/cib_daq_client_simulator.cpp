@@ -33,6 +33,8 @@ extern "C"
 #include <spdlog/spdlog.h>
 #include <spdlog/cfg/env.h>
 #include <cib_data_fmt.h>
+#include <mem_utils.h>
+#include <cib_data_utils.h>
 
 using json = nlohmann::json;
 
@@ -128,7 +130,7 @@ void receiver()
       {
         cib::daq::iols_trigger_t *word;
         word = &(packet.word); //reinterpret_cast<daq::iols_trigger_t*>(m_buffer);
-        SPDLOG_DEBUG("RX Word : TS {0} M1 {1} M2 {2} M3 {3}",word->timestamp,word->get_pos_m1(),word->get_pos_m2(),word->get_pos_m3());
+        SPDLOG_DEBUG("RX Word : TS {0} M1 {1} M2 {2} M3 {3}",word->timestamp,cib::data::get_m1(*word),cib::data::get_m2(*word),cib::data::get_m3(*word));
         //continue ;
       }
       if ( receiving_error == boost::asio::error::eof)

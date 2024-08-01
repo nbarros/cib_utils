@@ -14,6 +14,7 @@
 #include <chrono>
 #include <cib_mem.h>
 #include <cib_data_utils.h>
+#include <mem_utils.h>
 
 extern "C"
 {

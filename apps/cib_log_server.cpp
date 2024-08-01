@@ -17,6 +17,7 @@
 
 #include <cib_mem.h>
 #include <cib_data_fmt.h>
+#include <mem_utils.h>
 
 #include <axis-fifo.h>
 
