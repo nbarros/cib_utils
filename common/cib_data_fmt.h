@@ -12,6 +12,9 @@ extern "C"
 #include <inttypes.h>
 }
 #include <cstdint>
+#include <cstddef>
+
+using std::size_t;
 
 #ifdef CIB_DUNEDAQ
 namespace dunedaq {
