@@ -287,6 +287,8 @@ namespace cib
     else
     {
       SPDLOG_WARN("Thread is not joinable. Forcing our way out of it.");
+      add_feedback("WARN","Thread not joinable. Forcing an acquisition stop.");
+
       // this should not happen.
       // It will certainly lead to dirty trail of remains
       //m_control_thread.get_deleter().default_delete();
@@ -299,7 +301,7 @@ namespace cib
 
     // terminate the transmission socket
     term_transmitter();
-
+    add_feedback("INFO","Run stopped.");
     return 0;
   }
 

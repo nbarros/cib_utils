@@ -101,6 +101,7 @@ namespace cib
     if (m_state == kRunning)
     {
       SPDLOG_WARN("Still running. Terminating the run first");
+      add_feedback("WARN","Run still ongoing. Stopping it first.");
       m_run_enable.store(false);
       //stop_run();
     }
@@ -133,18 +134,10 @@ namespace cib
       if ((m_state !=  kReady) && (m_state != kRunning))
       {
         SPDLOG_ERROR("Socket is not in a usable state");
-        daq::iols_feedback_msg_t msg;
-        msg.sev = "ERROR";
-        msg.msg = "Socket is not in a usable state";
-        m_message_queue.push(msg);
+        add_feedback("ERROR","Socket is not in a usable state");
         return 1;
       }
 
-//      if (!m_receiver_init)
-//      {
-//        spdlog::error("Transmitter is not ready");
-//        return 1;
-//      }
       boost::system::error_code boost_error;
 
       try
@@ -153,7 +146,7 @@ namespace cib
         if ( boost_error == boost::asio::error::eof)
         {
           std::string error_message = "Socket closed: " + boost_error.message();
-          SPDLOG_ERROR("BOOST ASIO Connection lost: %s\n",error_message.c_str());
+          SPDLOG_ERROR("BOOST ASIO Connection lost: {0}\n",error_message.c_str());
           has_error = true;
         }
 
@@ -171,7 +164,7 @@ namespace cib
       }
       catch(std::exception &e)
       {
-        SPDLOG_ERROR("Caught an exception: {}",e.what());
+        SPDLOG_ERROR("Caught an exception: {0}",e.what());
         return 1;
       }
       catch(...)

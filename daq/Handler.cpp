@@ -227,7 +227,6 @@ namespace cib
             if (cmd == std::string("config"))
             {
               SPDLOG_DEBUG("Received a config request\n");
-
               // call the configurator
               ret = config(request.at("config"),resp);
               if (ret)
@@ -238,7 +237,7 @@ namespace cib
             else if (cmd == std::string("start_run"))
             {
 
-              SPDLOG_DEBUG("Received a run start request\n");
+              SPDLOG_DEBUG("Received a run start request");
               uint32_t run_number = request.at("run_number").get<uint32_t>();
               SPDLOG_DEBUG("Starting run {0}",run_number);
               ret = start_run(resp,run_number);
@@ -246,11 +245,11 @@ namespace cib
               {
                 had_error = true;
               }
-              SPDLOG_TRACE("Feedback from Received a run start request [{}]",resp.dump());
+              SPDLOG_TRACE("Feedback from Received a run start request [{0}]",resp.dump());
             }
             else if (cmd == std::string("stop_run"))
             {
-              SPDLOG_DEBUG("Received a run stop request\n");
+              SPDLOG_DEBUG("Received a run stop request");
               ret = stop_run(resp);
               if (ret)
               {
@@ -336,7 +335,7 @@ namespace cib
           m_control_error.store(true);
           std::stringstream msg("");
           msg << "JSON exception : " << e.what();
-          SPDLOG_ERROR("JSON exception while sending response :{}",e.what());
+          SPDLOG_ERROR("JSON exception while sending response :{0}",e.what());
         }
         catch(std::exception &e)
         {
@@ -344,7 +343,7 @@ namespace cib
           std::stringstream msg("");
           msg << "STD exception : " << e.what();
           add_feedback(resp,"ERROR",msg.str());
-          SPDLOG_ERROR("STD exception while sending response:{}",e.what());
+          SPDLOG_ERROR("STD exception while sending response:{0}",e.what());
         }
         catch(...)
         {
