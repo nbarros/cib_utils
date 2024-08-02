@@ -154,6 +154,10 @@ namespace cib
     SPDLOG_TRACE("Entering readout loop");
     //FIXME: Remove this
     m_debug = true;
+    // init the word with the necessary info
+    m_eth_packet.header.set_version(1);
+    m_eth_packet.header.packet_size = 16;
+
 
     while (m_take_data.load())
     {
@@ -173,6 +177,7 @@ namespace cib
           SPDLOG_ERROR("Mismatch in word size. Expected {0} but got {1}",sizeof(daq::iols_trigger_t));
         }
         SPDLOG_TRACE("Sending word");
+        m_eth_packet.header.sequence_id = run_packets_rx;
         rc = send_data(reinterpret_cast<uint8_t*>(&m_eth_packet),sizeof(m_eth_packet));
         if (rc != 0)
         {
