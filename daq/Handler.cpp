@@ -331,6 +331,8 @@ namespace cib
             throw std::runtime_error(error.message());
           }
           SPDLOG_DEBUG("Reply sent");
+          // reset the response object
+          resp.clear();
         }
         catch(nlohmann::json::exception &e)
         {
