@@ -69,7 +69,9 @@ namespace cib
       boost::asio::ip::tcp::resolver resolver( m_receiver_ios );
       //boost::asio::ip::tcp::resolver::query query(m_receiver_host, std::to_string(m_receiver_port),boost::asio::ip::tcp::resolver::query::v4_mapped ) ; //"np04-ctb-1", 8991
       //boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(query) ;
-      boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(boost::asio::ip::tcp::v4(),m_receiver_host, std::to_string(m_receiver_port));
+      boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(boost::asio::ip::tcp::v4(),
+                                                                       m_receiver_host,
+                                                                       std::to_string(m_receiver_port));
       m_receiver_endpoint = iter->endpoint();
       m_receiver_socket.connect( m_receiver_endpoint );
       m_state = kReady;
@@ -77,22 +79,20 @@ namespace cib
     }
     catch(std::exception &e)
     {
-      SPDLOG_ERROR("Failed to init with exception {0}",e.what());
+      SPDLOG_ERROR("Failed to init_transmitter with exception {0}",e.what());
+      std::ostringstream msg("");
+      msg << "Failed to init_transmitter with exception : " << e.what();
+      add_feedback("ERROR",msg.str());
       m_state = kSet;
     }
     catch(...)
     {
       SPDLOG_ERROR("Failed to init with unknown exception");
+      std::ostringstream msg("");
+      msg << "Failed to init_transmitter with unknown exception ";
+      add_feedback("ERROR",msg.str());
       m_state = kSet;
     }
-//    if (m_receiver_init)
-//    {
-//      SPDLOG_INFO("Transmitter socket initialized");
-//    }
-//    else
-//    {
-//      SPDLOG_WARN("Transmitter socket NOT initialized");
-//    }
   }
 
 

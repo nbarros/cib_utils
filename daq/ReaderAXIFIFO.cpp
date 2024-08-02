@@ -237,6 +237,13 @@ namespace cib
     // step 1 - establish the connection to the receiver
     SPDLOG_TRACE("Initializing transmitter");
     init_transmitter();
+    if (m_state != kReady)
+    {
+      // -- transmitter failed to init
+      // fail the run
+      term_transmitter();
+      return 1;
+    }
     // reset the DAQ FIFO
     SPDLOG_TRACE("Resetting DAQ FIFO");
     reset_daq_fifo();
@@ -252,6 +259,8 @@ namespace cib
     {
       SPDLOG_ERROR("Failed to launch readout thread.");
       add_feedback("ERROR","Failed to launch readout thread");
+      // at this point terminate the transmitter
+      term_transmitter();
       return 1;
     }
     // step 3 - now activate the DAQ fifo
