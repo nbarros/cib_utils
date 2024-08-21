@@ -32,6 +32,13 @@ add_subdirectory(daq)
 add_subdirectory(apps)
 add_subdirectory(tests)
 
+#file(GLOB COMMON_SRC_FILES ${PROJECT_SOURCE_DIR}/common/*.cpp)
+#add_library(LaserUtils STATIC ${COMMON_SRC_FILES})
+#target_compile_features(LaserUtils PUBLIC cxx_std_11)
+#target_link_libraries(LaserUtils PUBLIC common cib_daq cib_i2c)
+#add_custom_target(LaserUtils )
+file(GLOB COMMON_SRC_FILES ${PROJECT_SOURCE_DIR}/common/*.cpp)
+add_library(LaserUtils OBJECT ${COMMON_SRC_FILES})
 
 # This project will output an executable file
 #add_executable(${PROJECT_NAME} cib_tools.cpp)
