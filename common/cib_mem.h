@@ -14,6 +14,17 @@
 //#define CONF_MEM_HIGH  0x00A007FFFF
 //#define CONF_CH_OFFSET 0x4
 
+#define PDTS_REG    0
+#define I_0_REG     1
+#define I_1_REG     2
+#define ALIGN_REG   3
+#define LASER_REG   4
+#define MISC_REG    5
+#define MOTOR_1_REG 6
+#define MOTOR_2_REG 7
+#define MOTOR_3_REG 8
+
+
 #define GPIO_PDTS_MEM_LOW   0xA0010000
 #define GPIO_PDTS_MEM_HIGH  0xA001FFFF
 

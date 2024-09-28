@@ -148,6 +148,7 @@ namespace cib
   {
     ssize_t bytes_rx = 0;
     uint32_t run_packets_rx = 0;
+    uint8_t seq_num = 0;
     uint32_t run_bytes_rx = 0;
     int rc = 0;
     // this is for debug purposes
@@ -177,7 +178,7 @@ namespace cib
           SPDLOG_ERROR("Mismatch in word size. Expected {0} but got {1}",sizeof(daq::iols_trigger_t));
         }
         SPDLOG_TRACE("Sending word");
-        m_eth_packet.header.sequence_id = run_packets_rx;
+        m_eth_packet.header.sequence_id = seq_num;
         rc = send_data(reinterpret_cast<uint8_t*>(&m_eth_packet),sizeof(m_eth_packet));
         if (rc != 0)
         {
@@ -187,6 +188,7 @@ namespace cib
         }
         else
         {
+          seq_num++; // let the variable rollover when we reach the end
           run_packets_rx++;
           m_tot_packets_rx++;
           m_tot_bytes_rx += bytes_rx;
@@ -318,69 +320,5 @@ namespace cib
     add_feedback("INFO","Run stopped.");
     return 0;
   }
-
-  /*
-  int send_data(const ssize_t n_bytes)
-  {
-    // do a quick check that we actually have a socket to ship the data
-    daq::iols_trigger_t word;
-
-    static uint32_t seq_num = 0;
-
-    if (!m_transmit_ready)
-    {
-      SPDLOG_ERROR("Transmitter is not ready");
-      // FIXME: Add a way to stop acquisition
-      m_take_data.store(false);
-      return;
-    }
-    boost::system::error_code boost_error;
-    seq_num++;
-    m_eth_packet.header.format_version = 0x1;
-    m_eth_packet.header.sequence_id = seq_num;
-    m_eth_packet.header.packet_size = sizeof(daq::iols_trigger_t) & 0xFFFF;
-
-    try
-    {
-      boost::asio::write( m_receiver_socket, boost::asio::buffer( eth_buffer, n_bytes_sent), boost_error ) ;
-      if ( boost_error == boost::asio::error::eof)
-      {
-        std::string error_message = "Socket closed: " + boost_error.message();
-        SPDLOG_ERROR("BOOST ASIO Connection lost: %s\n",error_message.c_str());
-        break;
-      }
-
-      if ( error )
-      {
-        std::string error_message = "Transmission failure: " + boost_error.message();
-        SPDLOG_ERROR("BOOST non-descript error: %s\n",error_message.c_str());
-        break;
-      }
-
-      m_tot_packets_sent++;
-      m_tot_bytes_sent += sizeof(daq::iols_tcp_packet_t);
-
-    }
-    catch(std::exception &e)
-    {
-      SPDLOG_ERROR("Caught an exception: {}",e.what());
-      stop_acquisition();
-      return -1;
-    }
-    catch(...)
-    {
-      SPDLOG_ERROR("Caught unknown exception\n");
-      stop_acquisition();
-      return -1;
-    }
-    if (boost_error)
-    {
-      SPDLOG_ERROR("Failed to send data. Stopping execution.");
-      stop_acquisition();
-      return -1;
-    }
-    return 0;
-  }
-  */
 
 } /* namespace cib */

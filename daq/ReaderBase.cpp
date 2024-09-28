@@ -127,7 +127,7 @@ namespace cib
   {
     // do a quick check that we actually have a socket to ship the data
 
-      static uint32_t seq_num = 0;
+      //      static uint32_t seq_num = 0;
       bool has_error = false;
       // we also accept to send data without running state, even though that may give trouble
       // but that is irrelevant for this method

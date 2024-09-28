@@ -59,13 +59,14 @@
 
 #define BIT(n) (1UL << n)
 
+/*
 typedef struct versaclock_register
 {
    uint8_t size;
    uint8_t addr;
    uint8_t val;
 } versaclock_register;
-
+*/
 
 
 //max delay for calibration from SI documentation 300ms
@@ -329,11 +330,11 @@ static inline int32_t program_versaclock(int file)
   versaclock_register reg;
   int status;
   // first check that the address is the same as currently
-  if (((chip_addr >> 1) & 0x1) ^ (vc5_reg_store[0].val & 0x1))
+  if (((chip_addr >> 1) & 0x1) ^ (reg_store[0].val & 0x1))
   {
     printf("Noting an address change. After this, will need to reconnect to the I2C device\n");
-    i2c_write_register_mask(file,0x0,vc5_reg_store[0].val,0x1);
-    chip_addr = (chip_addr & ~(0x2)) | ((vc5_reg_store[0x0].val & 0x1) << 0x1);
+    i2c_write_register_mask(file,0x0,reg_store[0].val,0x1);
+    chip_addr = (chip_addr & ~(0x2)) | ((reg_store[0x0].val & 0x1) << 0x1);
     printf("\r\n\r\nWARNING : Setting updated address to  0x%02X.\r\n\r\n",(unsigned int)chip_addr);
     printf("Closing the connection to the I2C device:\n");
     close(file);
@@ -349,9 +350,9 @@ static inline int32_t program_versaclock(int file)
   }
   printf("Programming the remainder of the registers:\n");
   // and now program each register as needed
-  for (unsigned int i = 1; i < VC5_NUM_REGS; i++)
+  for (unsigned int i = 1; i < NUM_REGS_MAX; i++)
   {
-    reg = vc5_reg_store[i];
+    reg = reg_store[i];
     i2c_write_register(fd,reg.addr,reg.val);
     // read back and check
     uint8_t readback = i2c_read_register(fd,reg.addr);
