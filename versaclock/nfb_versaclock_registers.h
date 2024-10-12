@@ -8,6 +8,17 @@
 #ifndef ZYNQMP_FSBL_NFB_VERSACLOCK_REGISTERS_H_
 #define ZYNQMP_FSBL_NFB_VERSACLOCK_REGISTERS_H_
 
+#ifndef VS_STRUCT
+#define VS_STRUCT 1
+typedef struct versaclock_register
+{
+   uint8_t size;
+   uint8_t addr;
+   uint8_t val;
+} versaclock_register;
+#endif
+
+
 #ifdef NFB_CIB_VC5_CONFIG_0
 
 //FIXME: correct for the right number of registers

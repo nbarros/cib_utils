@@ -504,17 +504,25 @@ int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3)
   uint32_t reg = (m1.dir << 31) | cib::util::cast_from_signed(m1.pos_i, mask); // this should be replaced
   spdlog::debug("Writing M1 register with 0x{0}",reg);
   cib::util::reg_write(maddr,reg);
+  spdlog::debug("Activating the data written");
+  uint32_t activation_mask = cib::util::bitmask(30,30);
+  cib::util::reg_write_mask_offset(maddr,0x1,activation_mask,30);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
   maddr = g_cib_mem.gpio_motor_2.v_addr;
+  mask = cib::util::bitmask(21,0);
   reg = (m2.dir << 31)  | cib::util::cast_from_signed(m2.pos_i, mask); // this should be replaced
   spdlog::debug("Writing M2 register with 0x{0}",reg);
   cib::util::reg_write(maddr,reg);
+  activation_mask = cib::util::bitmask(30,30);
+  cib::util::reg_write_mask_offset(maddr,0x1,activation_mask,30);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
   maddr = g_cib_mem.gpio_motor_3.v_addr;
   mask = cib::util::bitmask(16,0);
   reg = (m3.dir << 31)  | cib::util::cast_from_signed(m3.pos_i, mask); // this should be replaced
   spdlog::debug("Writing M3 register with 0x{0}",reg);
   cib::util::reg_write(maddr,reg);
+  activation_mask = cib::util::bitmask(30,30);
+  cib::util::reg_write_mask_offset(maddr,0x1,activation_mask,30);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
 
 
