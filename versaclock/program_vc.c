@@ -60,7 +60,7 @@
 #define BIT(n) (1UL << n)
 
 #ifndef VS_STRUCT
-#define VS_STRUCT 1
+#define VS_STRUCT
 typedef struct versaclock_register
 {
    uint8_t size;
@@ -75,6 +75,7 @@ typedef struct versaclock_register
 //delay
 // 131 ms (need to be at least 100 ms)
 #define VC5_DELAY_AFTER_PLL_CONFIG_US 0x20000U
+
 #define NFB_CIB_VC5_CONFIG_1
 
 #include <nfb_versaclock_registers.h>
