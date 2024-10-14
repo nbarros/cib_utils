@@ -416,7 +416,7 @@ versaclock_register const vc5_reg_store_untrimmed[VC5_NUM_REGS] =
 #elif defined(NFB_CIB_VC5_CONFIG_RAW)
 
 #define VC5_NUM_REGS 91
-versaclock_register const reg_store[VC5_NUM_REGS] = {
+versaclock_register const vc5_reg_store[VC5_NUM_REGS] = {
 {0x1, 0x78, 0x01},
 {0x1, 0x77, 0x01},
 {0x1, 0x73, 0x00},
