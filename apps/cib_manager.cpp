@@ -1011,6 +1011,12 @@ int run_command(int argc, char** argv)
   else if (cmd == "motor_init")
   {
     int res = 0;
+    // check that the periscope is set first
+    if (m_p == None)
+    {
+      spdlog::error("Periscope not selected. First you must call `set_periscope` to select operating periscope");
+      return 0;
+    }
     if (argc == 1)
     {
       // just want to do a readout
