@@ -123,7 +123,7 @@ int select_periscope(int p)
   {
     m_p = P1;
   }
-  if (p == 2)
+  else if (p == 2)
   {
     m_p = P2;
   }
@@ -520,6 +520,7 @@ int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3)
 
   uintptr_t maddr = g_cib_mem.gpio_motor_1.v_addr;
   uint32_t mask = cib::util::bitmask(21,0);
+  // this fails is previously the direction
   uint32_t reg = (m1.dir << 31) | cib::util::cast_from_signed(m1.pos_i, mask); // this should be replaced
   spdlog::debug("Writing M1 register with 0x{0}",reg);
   cib::util::reg_write(maddr,reg);
@@ -584,9 +585,9 @@ int get_motor_init_position()
   // now the directions
   mask = cib::util::bitmask(31,31);
   uint32_t m1dir = (m1r & mask) >> 31;
-  uint32_t m2dir = (m1r & mask) >> 31;
-  uint32_t m3dir = (m1r & mask) >> 31;
-  spdlog::trace("Getting movement direction from motors (0 : u, 1: d)");
+  uint32_t m2dir = (m2r & mask) >> 31;
+  uint32_t m3dir = (m3r & mask) >> 31;
+  spdlog::trace("Getting movement direction from motors (1 : u, 0: d)");
   spdlog::info("Direction [RNN800, RNN600, LSTAGE] = [{0},{1},{2}]",m1dir,m2dir,m3dir);
 
   return 0;
