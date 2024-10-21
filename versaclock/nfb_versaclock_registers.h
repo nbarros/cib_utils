@@ -9,7 +9,7 @@
 #define ZYNQMP_FSBL_NFB_VERSACLOCK_REGISTERS_H_
 
 #ifndef VS_STRUCT
-#define VS_STRUCT 1
+#define VS_STRUCT
 typedef struct versaclock_register
 {
    uint8_t size;

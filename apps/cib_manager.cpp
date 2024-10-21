@@ -527,6 +527,8 @@ int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3)
   uint32_t activation_mask = cib::util::bitmask(30,30);
   cib::util::reg_write_mask_offset(maddr,0x1,activation_mask,30);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
+  cib::util::reg_write_mask_offset(maddr,0x0,activation_mask,30);
+  
   maddr = g_cib_mem.gpio_motor_2.v_addr;
   mask = cib::util::bitmask(21,0);
   reg = (m2.dir << 31)  | cib::util::cast_from_signed(m2.pos_i, mask); // this should be replaced
@@ -535,6 +537,8 @@ int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3)
   activation_mask = cib::util::bitmask(30,30);
   cib::util::reg_write_mask_offset(maddr,0x1,activation_mask,30);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
+  cib::util::reg_write_mask_offset(maddr,0x0,activation_mask,30);
+
   maddr = g_cib_mem.gpio_motor_3.v_addr;
   mask = cib::util::bitmask(16,0);
   reg = (m3.dir << 31)  | cib::util::cast_from_signed(m3.pos_i, mask); // this should be replaced
@@ -543,6 +547,7 @@ int set_motor_init_position(motor_t m1, motor_t m2, motor_t m3)
   activation_mask = cib::util::bitmask(30,30);
   cib::util::reg_write_mask_offset(maddr,0x1,activation_mask,30);
   std::this_thread::sleep_for(std::chrono::microseconds(10));
+  cib::util::reg_write_mask_offset(maddr,0x0,activation_mask,30);
 
 
   // read the register back to be sure
@@ -1716,7 +1721,7 @@ void print_help()
   spdlog::info("    Config alignment laser");
   spdlog::info("  align_enable [state]");
   spdlog::info("    Enable/disable alignment laser");
-  spdlog::info("  motor_init [pi_1 pi_2 pi_3]");
+  spdlog::info("  motor_init [pi_rnn800<dir> pi_rnn600<dir> pi_lstage<dir>] (<dir> is 'u' (increasing step) or 'd' (decreasing step)");
   spdlog::info("    Config the initial position of the motor (in the FPGA)");
   spdlog::info("  laser_config [laser_config fire_state fire_width [fire_period] qs_state qs_width qs_delay]");
   spdlog::info("    Configure the laser system in a single command. WARNING: Careful setting the fire_period");
@@ -1737,7 +1742,6 @@ void print_help()
   spdlog::info("    Read DNA register of the board");
   spdlog::info("  set_periscope [periscope]");
   spdlog::info("    Set the current periscope being operated (1: P1, 2: P2)");
-
   spdlog::info("  help");
   spdlog::info("    Print this help");
   spdlog::info("  exit");
