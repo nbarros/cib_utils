@@ -31,7 +31,8 @@ extern "C"
 
 //extern cib::limits::motor_limits_t m_limits;
 cib::limits::motor_limits_t m_limits;
-
+enum periscope{None=0,P1=1, P2=2};
+periscope m_p;
 volatile std::atomic<bool> run;
 
 using cib::cib_mem_t;
@@ -92,6 +93,7 @@ int set_laser_settings(uintptr_t &addr,
                        uint32_t qs_state,  uint32_t qs_width, uint32_t qs_delay, uint32_t fire_period);
 
 int get_dna(uintptr_t &addr1,uintptr_t &addr2);
+int select_periscope(int p);
 
 int run_command(int argc, char** argv);
 void print_help();
@@ -115,6 +117,23 @@ void read_register(mapped_mem_t &reg)
   );
 }
 
+int select_periscope(int p)
+{
+  if (p == 1)
+  {
+    m_p = P1;
+  }
+  if (p == 2)
+  {
+    m_p = P2;
+  }
+  else
+  {
+    spdlog::error("Invalid periscope option. Valid options are 1, 2");
+    return 1;
+  }
+  return motor_init_limits();
+}
 
 int get_dna(uintptr_t &addr1, uintptr_t &addr2)
 {
@@ -571,13 +590,31 @@ int get_motor_init_position()
 int motor_init_limits()
 {
   // limits from https://docs.google.com/spreadsheets/d/100HDufZ39EIJtkl2HsLmL_xbE8cTSIuBd_5BsyRRMto/edit?usp=sharing
-  m_limits.m3_min = -3001;
-  m_limits.m3_max = 28967;
-  m_limits.m2_min = -580000;
-  m_limits.m2_max = 580000;
-  m_limits.m1_min = -580000;
-  m_limits.m1_max = 580000;
-
+  if (m_p == P1)
+  {
+    // FIXME: these numbers are bogus
+    m_limits.m3_min = -3001;
+    m_limits.m3_max = 28967;
+    m_limits.m2_min = -580000;
+    m_limits.m2_max = 580000;
+    m_limits.m1_min = 78661;
+    m_limits.m1_max = 136995;
+  }
+  else if (m_p == P2)
+  {
+    // these have been discussed with David on 21/10/2024
+    m_limits.m3_min = -3001;
+    m_limits.m3_max = 28967;
+    m_limits.m2_min = 569666;
+    m_limits.m2_max = 700000;
+    m_limits.m1_min = 78661;
+    m_limits.m1_max = 136995;
+  }
+  else
+  {
+    spdlog::error("Periscope not set. Need to first set periscope being operated with command set_periscope");
+    return 1;
+  }
   return 0;
 }
 
@@ -1560,6 +1597,32 @@ int run_command(int argc, char** argv)
     get_dna(g_cib_mem.gpio_mon_0.v_addr, g_cib_mem.gpio_mon_1.v_addr);
     return 0;
   }
+  else if (cmd == "set_periscope")
+  {
+    spdlog::debug("Setting periscope to be operated");
+    int res = 0;
+    if (argc == 1)
+    {
+      spdlog::info("Checking which periscope is selected");
+      int selection = static_cast<int>(m_p);
+      spdlog::info("Selected periscope : {0}",selection);
+    }
+    else if (argc == 2)
+    {
+      int state = std::strtol(argv[1],NULL,0);
+      spdlog::info("Selecting periscope {0}",state);
+      res = select_periscope(state);
+    }
+    else
+    {
+      spdlog::warn("usage: set_periscope [periscope] (periscope: 1(P1), 2(P2)");
+    }
+    if (res != 0)
+    {
+      spdlog::error("Failed to execute command");
+    }
+    return 0;
+  }
   else if (cmd == "read")
   {
     if (argc != 2)
@@ -1672,6 +1735,8 @@ void print_help()
   spdlog::info("    Read a mapped register. Options: misc, laser, align, pdts, mon_0, mon_1, motor_1, motor_2, motor_3");
   spdlog::info("  dna");
   spdlog::info("    Read DNA register of the board");
+  spdlog::info("  set_periscope [periscope]");
+  spdlog::info("    Set the current periscope being operated (1: P1, 2: P2)");
 
   spdlog::info("  help");
   spdlog::info("    Print this help");
@@ -1689,7 +1754,8 @@ int main(int argc, char** argv)
   // initiate spdlog
   spdlog::set_pattern("cib : [%^%L%$] %v");
   spdlog::set_level(spdlog::level::info); // Set global log level to info
-  motor_init_limits();
+  m_p = None;
+  //motor_init_limits();
 
   int c;
   opterr = 0;
