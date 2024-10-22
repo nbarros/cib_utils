@@ -120,7 +120,7 @@ void read_task()
     {
       // sleep it over, to reduce on the CPU load
       // on another application, this dropped the CPU usage from 100% to 0.2%
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
   }
   spdlog::info("Left the reading loop. Closing the output file {1} with {0} entries ({2} bytes) ",packets_rx,global_name,bytes_rx);
@@ -217,16 +217,24 @@ int main(int argc, char* argv[])
   // so we follow a simpler procedure in the lines of the read_daq_fifo
 
   /***********************************************/
+  /* map the DAQ enable register (for reading)   */
+  /***********************************************/
+
+  /***********************************************/
   /* map the laser enable register (for reading) */
   /***********************************************/
-  g_reg_addr = cib::util::map_phys_mem(g_mem_fd,GPIO_LASER_MEM_LOW,0x1000);
+  //g_reg_addr = cib::util::map_phys_mem(g_mem_fd,GPIO_LASER_MEM_LOW,0x1000);
+  //g_reg_addr = cib::util::map_phys_mem(g_mem_fd,GPIO_LASER_MEM_LOW,0x1000);
+  g_reg_addr = cib::util::map_phys_mem(g_mem_fd,GPIO_MISC_MEM_LOW,0x1000);
+
   if (!g_reg_addr)
   {
-    spdlog::critical("Failed to map laser control register");
+    spdlog::critical("Failed to map MISC register");
     cleanup();
     return -1;
   }
   uint32_t reg_stat = cib::util::reg_read(g_reg_addr);
+  const uint32_t mask = cib::util::bitmask(26,26);
 
   /*************/
   /* open FIFO */
@@ -254,13 +262,13 @@ int main(int argc, char* argv[])
   /* start the thread  */
   /*********************/
   std::thread worker;
-  spdlog::info("Empty thread ID is joinable: {0}",worker.joinable());
+  spdlog::info("Empty thread ID (before assignment) is joinable: {0} (expect false)",worker.joinable());
 
   while(g_keep_running.load())
   {
     // check whether the laser is operating
     reg_stat = cib::util::reg_read(g_reg_addr);
-    if ((reg_stat & (0x1 << 31)))
+    if (reg_stat & mask)
     {
       // run is ongoing, lauch the thread, if it is not yet going
       if (worker.joinable())
@@ -279,7 +287,7 @@ int main(int argc, char* argv[])
     }
     else
     {
-      // -- laser is not on
+      // -- the run has stopped
       // if the thread is still running then terminate it
       if (worker.joinable())
       {
@@ -287,8 +295,8 @@ int main(int argc, char* argv[])
       }
       else
       {
-        // nothing going on. Sleep over it.
-        // check whether the laser was enabled every 100 ms
+        // nothing going on. Sleep it over.
+        // check whether a run started every 100 ms
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
       }
     }
