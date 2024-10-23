@@ -40,6 +40,7 @@ void dump_csv(const std::string infile, const std::string outfile)
    * 3. cast into the iols_trigger_t structure
    * 4. Extract the contents into separate columns
    */
+  spdlog::info("Translating triggers from \n INPUT  : [{0}]\n OUTPUT : [{1}]",infile,outfile);
   std::ifstream fin(infile.c_str(),std::ios::binary);
   if (!fin.is_open())
   {
@@ -69,7 +70,7 @@ void dump_csv(const std::string infile, const std::string outfile)
     }
     // all good. Cast and read
     cib::daq::iols_trigger_t *tword = reinterpret_cast<cib::daq::iols_trigger_t *>(buffer);
-    if (spdlog::get_level() == spdlog::level::trace)
+    //if (spdlog::get_level() == spdlog::level::trace)
     {
       dump_word(tword); 
     }
@@ -81,6 +82,7 @@ void dump_csv(const std::string infile, const std::string outfile)
   }
   fout.close();
   fin.close();
+  spdlog::info("Done converting data");
 }
 
 int main(int argc, char** argv)
@@ -135,5 +137,6 @@ int main(int argc, char** argv)
   }
 
   dump_csv(infile,outfile);
+  spdlog::info("All done.");
   return 0;
 }
