@@ -23,7 +23,7 @@ extern "C"
 void dump_word(cib::daq::iols_trigger_t *word)
 {
   assert(word != nullptr);
-  spdlog::info("TS {64:0} M1 {6:1} M2 {6:2} M3 {6:3}",
+  spdlog::info("TS {0} M1 {1:06d} M2 {2:06d} M3 {3:06d}",
                word->timestamp,
                cib::data::get_m1(*word),
                cib::data::get_m2(*word), 
@@ -85,10 +85,16 @@ void dump_csv(const std::string infile, const std::string outfile)
   spdlog::info("Done converting data");
 }
 
+void print_help()
+{
+  spdlog::info("dump_csv <input_file> <output_file>");
+  spdlog::info("        Produces a CSV file with the trigger info in human readable format");
+}
+
 int main(int argc, char** argv)
 {
 
-  spdlog::set_pattern("cib : [%^%L%$] %v");
+  spdlog::set_pattern("cib_trigger : [%^%L%$] %v");
   spdlog::set_level(spdlog::level::info); // Set global log level to info
 
   std::string infile, outfile;
@@ -138,5 +144,63 @@ int main(int argc, char** argv)
 
   dump_csv(infile,outfile);
   spdlog::info("All done.");
+
+  // by default set to the appropriate settings
+  print_help();
+
+  // -- now start the real work
+  char *buf;
+  while ((buf = readline(">> ")) != nullptr)
+  {
+    if (strlen(buf) > 0)
+    {
+      add_history(buf);
+    }
+    else
+    {
+      free(buf);
+      continue;
+    }
+    char *delim = (char *)" ";
+    int count = 1;
+    char *ptr = buf;
+    while ((ptr = strchr(ptr, delim[0])) != NULL)
+    {
+      count++;
+      ptr++;
+    }
+    if (count > 0)
+    {
+      char **cmd = new char *[count];
+      cmd[0] = strtok(buf, delim);
+      int i;
+      for (i = 1; cmd[i - 1] != NULL && i < count; i++)
+      {
+        cmd[i] = strtok(NULL, delim);
+      }
+      if (cmd[i - 1] == NULL)
+        i--;
+      int ret = run_command(i, cmd);
+      delete[] cmd;
+      if (ret == 255)
+      {
+        clear_memory();
+        return 0;
+      }
+      if (ret != 0)
+      {
+        clear_memory();
+        return ret;
+      }
+    }
+    else
+    {
+      clear_memory();
+      return 0;
+    }
+    free(buf);
+  }
+  clear_memory();
+
   return 0;
 }
