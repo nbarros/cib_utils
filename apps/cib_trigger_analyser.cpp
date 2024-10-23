@@ -134,6 +134,7 @@ int run_command(int argc, char **argv)
   }
   else if (cmd == "dump")
   {
+    int ret = 0;
     if (argc == 2)
     {
       // just dump the input file
@@ -151,7 +152,52 @@ int run_command(int argc, char **argv)
     {
       spdlog::warn("usage: dump_triggers <trigger_file> [out_csv_file] (output file is optional)");
     }
+    if (ret != 0)
+    {
+      spdlog::error("Failed to execute command. Check previous errors.");
     }
+    return 0;
+  }
+  else if (cmd == "conv_from_ts")
+  {
+    if (argc != 2)
+    {
+      spdlog::warn("Usage: conv_from_ts pdts_timestamp");
+      return 0;
+    }
+    else
+    {
+      std::string tstamp = argv[1];
+      uint64_t ts = std::stoull(tstamp);
+      spdlog::trace("Converting timestamp {0}",ts);
+      std::string res = cib::util::format_timestamp(ts,625000000);
+      spdlog::info("DATE : {0}",res);
+    }
+    return 0;
+  }
+  else if (cmd == "conv_to_ts")
+  {
+    if (argc != 3)
+    {
+      spdlog::warn("Usage: conv_to_ts YYYY-MM-DD HH:MM:SS");
+      return 0;
+    }
+    else
+    {
+      std::string date_time = argv[1];
+      date_time += " ";
+      date_time += argv[2];
+      uint64_t ts = cib::util::calc_timestamp(date_time,62500000);
+      spdlog::info("PDTS : {0}", ts);
+    }
+    return 0;
+  }
+  else
+  {
+    spdlog::error("Unknown command.");
+    return 0;
+  }
+  return 0;
 }
 
 
@@ -159,6 +205,10 @@ void print_help()
 {
   spdlog::info("dump_triggers <input_file> [out_csv_file]");
   spdlog::info("        Produces a CSV file with the trigger info in human readable format");
+  spdlog::info("conv_to_ts YYYY-MM-DD HH:MM:SS");
+  spdlog::info("        Convert the date specified into a PDTS timestamp");
+  spdlog::info("conv_from_ts <timestamp>");
+  spdlog::info("        Convert a PDTS timestamp into a date time setting");
 }
 
 int main(int argc, char** argv)
