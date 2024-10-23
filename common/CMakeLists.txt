@@ -1,6 +1,6 @@
 
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_VERBOSE_MAKEFILE OFF)
 
 #find_package(spdlog REQUIRED)
 #find_package(i2c REQUIRED)
