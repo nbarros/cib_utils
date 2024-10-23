@@ -251,20 +251,6 @@ int main(int argc, char** argv)
   spdlog::trace("Just testing a trace");
   spdlog::debug("Just testing a debug");
 
-  if (infile.length() == 0)
-  {
-    spdlog::error("No input file specified.");
-    return 0;
-  }
-  if (outfile.length() == 0)
-  {
-    spdlog::error("No output file specified.");
-    return 0;
-  }
-
-  dump_triggers(infile,outfile);
-  spdlog::info("All done.");
-
   // by default set to the appropriate settings
   print_help();
 
