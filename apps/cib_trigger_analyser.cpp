@@ -170,7 +170,7 @@ int run_command(int argc, char **argv)
       std::string tstamp = argv[1];
       uint64_t ts = std::stoull(tstamp);
       spdlog::trace("Converting timestamp {0}",ts);
-      std::string res = cib::util::format_timestamp(ts,625000000);
+      std::string res = cib::util::format_timestamp(ts,62500000);
       spdlog::info("DATE : {0}",res);
     }
     return 0;

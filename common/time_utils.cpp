@@ -54,11 +54,12 @@ namespace cib
     std::string format_timestamp(uint64_t raw_timestamp, uint32_t clock_frequency_hz) // NOLINT(build/unsigned)
     {
       std::time_t sec_from_epoch = raw_timestamp / clock_frequency_hz;
-
+      printf("sec_from_epoch %ld\n",sec_from_epoch);
       struct tm* time = localtime(&sec_from_epoch); // NOLINT
       char time_buffer[32];
 
       std::strftime(time_buffer, sizeof time_buffer, "%a, %d %b %Y %H:%M:%S +0000", time);
+      printf("DATE : %s\n",time_buffer);
       return time_buffer;
     }
     //-----------------------------------------------------------------------------
