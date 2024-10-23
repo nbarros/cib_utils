@@ -48,7 +48,15 @@ target_compile_definitions(cib_trigger_analyser PUBLIC SPDLOG_ACTIVE_LEVEL=SPDLO
 set_target_properties(cib_trigger_analyser PROPERTIES CXX_STANDARD_REQUIRED ON)
 set_target_properties(cib_trigger_analyser PROPERTIES CXX_EXTENSIONS OFF)
 target_include_directories(cib_trigger_analyser PUBLIC ${PROJECT_SOURCE_DIR}/common)
-target_link_libraries(cib_trigger_analyser spdlog pthread common)
+target_link_libraries(cib_trigger_analyser spdlog pthread common readline)
+
+add_executable(cib_trigger_dumper cib_trigger_dumper.cpp)
+target_compile_features(cib_trigger_dumper PUBLIC cxx_std_11)
+target_compile_definitions(cib_trigger_dumper PUBLIC SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+set_target_properties(cib_trigger_dumper PROPERTIES CXX_STANDARD_REQUIRED ON)
+set_target_properties(cib_trigger_dumper PROPERTIES CXX_EXTENSIONS OFF)
+target_include_directories(cib_trigger_dumper PUBLIC ${PROJECT_SOURCE_DIR}/common)
+target_link_libraries(cib_trigger_dumper spdlog pthread common)
 
 #target_include_directories(cib_daq_interface PRIVATE ${PROJECT_SOURCE_DIR}/cib_debug)
 #target_include_directories(cib_daq_interface PUBLIC ${ZeroMQ_INCLUDE_DIR})

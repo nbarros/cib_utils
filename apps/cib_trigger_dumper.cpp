@@ -15,22 +15,14 @@
 
 extern "C"
 {
-#include <readline/readline.h>
-#include <readline/history.h>
 #include <unistd.h>
 };
 
 // -- Method prototypes
 void dump_word(cib::daq::iols_trigger_t *word);
 void dump_triggers(const std::string infile, const std::string outfile);
-int run_command(int argc, char **argv);
-void print_help();
 
-    //
-    // Implementations
-    //
-
-    void dump_word(cib::daq::iols_trigger_t *word)
+void dump_word(cib::daq::iols_trigger_t *word)
 {
   assert(word != nullptr);
   spdlog::info("TS {0:016d} M1 {1:06d} M2 {2:06d} M3 {3:06d}",
@@ -113,54 +105,6 @@ void dump_triggers(const std::string infile, const std::string outfile)
   spdlog::info("Done converting data");
 }
 
-int run_command(int argc, char **argv)
-{
-  if (argc < 1)
-  {
-    return 1;
-  }
-
-  std::string cmd(argv[0]);
-  spdlog::trace("Processing command : {0}",cmd);
-
-  if (cmd == "exit")
-  {
-    return 255;
-  }
-  else if (cmd == "help")
-  {
-    print_help();
-    return 0;
-  }
-  else if (cmd == "dump")
-  {
-    if (argc == 2)
-    {
-      // just dump the input file
-      std::string infile = argv[1];
-      std::string outfile = "";
-      dump_triggers(infile,outfile);
-    }
-    else if (argc == 3)
-    {
-      std::string infile = argv[1];
-      std::string outfile = argv[2];
-      dump_triggers(infile, outfile);
-    }
-    else
-    {
-      spdlog::warn("usage: dump_triggers <trigger_file> [out_csv_file] (output file is optional)");
-    }
-    }
-}
-
-
-void print_help()
-{
-  spdlog::info("dump_triggers <input_file> [out_csv_file]");
-  spdlog::info("        Produces a CSV file with the trigger info in human readable format");
-}
-
 int main(int argc, char** argv)
 {
 
@@ -215,57 +159,6 @@ int main(int argc, char** argv)
   dump_triggers(infile,outfile);
   spdlog::info("All done.");
 
-  // by default set to the appropriate settings
-  print_help();
-
-  // -- now start the real work
-  char *buf;
-  while ((buf = readline(">> ")) != nullptr)
-  {
-    if (strlen(buf) > 0)
-    {
-      add_history(buf);
-    }
-    else
-    {
-      free(buf);
-      continue;
-    }
-    char *delim = (char *)" ";
-    int count = 1;
-    char *ptr = buf;
-    while ((ptr = strchr(ptr, delim[0])) != NULL)
-    {
-      count++;
-      ptr++;
-    }
-    if (count > 0)
-    {
-      char **cmd = new char *[count];
-      cmd[0] = strtok(buf, delim);
-      int i;
-      for (i = 1; cmd[i - 1] != NULL && i < count; i++)
-      {
-        cmd[i] = strtok(NULL, delim);
-      }
-      if (cmd[i - 1] == NULL)
-        i--;
-      int ret = run_command(i, cmd);
-      delete[] cmd;
-      if (ret == 255)
-      {
-        return 0;
-      }
-      if (ret != 0)
-      {
-        return ret;
-      }
-    }
-    else
-    {
-      return 0;
-    }
-    free(buf);
-  }
+ 
   return 0;
 }
