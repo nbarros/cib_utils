@@ -171,7 +171,7 @@ namespace i2c {
   void i2c_exit(const int32_t &fd,  bool debug = true) 
   {
 
-    int32_t file;
+    // int32_t file;
     if (fd < 0) return;
     if (debug) 
     {
@@ -280,7 +280,7 @@ namespace i2c {
     }
 
     wr_bytes = write(dac.fd,buffer,bytes);
-    if (wr_bytes != bytes) {
+    if (static_cast<size_t>(wr_bytes) != bytes) {
       printf("i2c_write : Failed to write the message to DAC %i. Received %li (expected %lu).\n",dac.channel,wr_bytes,bytes);
       return 0;
     }
@@ -319,7 +319,7 @@ namespace i2c {
     }
 
     rd_bytes = read(dac.fd,buffer,bytes);
-    if (rd_bytes != bytes) {
+    if (static_cast<size_t>(rd_bytes) != bytes) {
       printf("i2c_read : Failed to read the register from DAC %i. Received %li (expected %lu).\n",dac.channel,rd_bytes,bytes);
       return 0;
     }

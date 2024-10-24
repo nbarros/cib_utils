@@ -306,7 +306,7 @@ static inline void versaclock_check_status(int file_descriptor)
 static inline void dump_versaclock(int file)
 {
   uint8_t i = 0;
-  int rawdata;
+  // int rawdata;
   uint8_t data;
   printf("Sumping the register content of the system:\n");
   for (i = 0x00; i <= 0x9F; i++)
@@ -330,7 +330,7 @@ static inline void reset_versaclock(int file)
 static inline int32_t program_versaclock(int file)
 {
   versaclock_register reg;
-  int status;
+  // int status;
   // first check that the address is the same as currently
   if (((chip_addr >> 1) & 0x1) ^ (vc5_reg_store[0].val & 0x1))
   {
