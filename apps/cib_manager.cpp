@@ -94,6 +94,7 @@ int set_laser_settings(uintptr_t &addr,
 
 int get_dna(uintptr_t &addr1,uintptr_t &addr2);
 int select_periscope(int p);
+int get_triggers();
 
 int run_command(int argc, char** argv);
 void print_help();
@@ -148,6 +149,17 @@ int get_dna(uintptr_t &addr1, uintptr_t &addr2)
 
   spdlog::info("DNA : 0x{2:X} 0x{1:X} 0x{0:X}",word0,word1,word2);
   spdlog::info("DNA (full) : 0x{2:X}{1:X}{0:X}",word0,word1,word2);
+  return 0;
+}
+
+int get_triggers()
+{
+  uintptr_t maddr = g_cib_mem.gpio_triggers.v_addr +(GPIO_CH_OFFSET*0);
+  uint32_t cib_triggers = cib::util::reg_read(maddr);
+  spdlog::info("CIB triggers : {0}",cib_triggers);
+  maddr = g_cib_mem.gpio_triggers.v_addr + (GPIO_CH_OFFSET * 1);
+  uint32_t ptr_triggers = cib::util::reg_read(maddr);
+  spdlog::info("PTR triggers : {0}", ptr_triggers);
   return 0;
 }
 
@@ -400,6 +412,16 @@ int map_memory()
   g_cib_mem.gpio_motor_3.v_addr = cib::util::map_phys_mem(g_mem_fd,GPIO_MOTOR_3_MEM_LOW,GPIO_MOTOR_3_MEM_HIGH);
   spdlog::debug("\nGot virtual address [0x{:X}]",g_cib_mem.gpio_motor_3.v_addr);
   if (g_cib_mem.gpio_motor_3.v_addr == 0x0)
+  {
+    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    return 255;
+  }
+
+  spdlog::info("Mapping TRIGGERS");
+  g_cib_mem.gpio_triggers.p_addr = GPIO_TRIGGER_MEM_LOW;
+  g_cib_mem.gpio_triggers.v_addr = cib::util::map_phys_mem(g_mem_fd, GPIO_TRIGGER_MEM_LOW, GPIO_TRIGGER_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]", g_cib_mem.gpio_triggers.v_addr);
+  if (g_cib_mem.gpio_triggers.v_addr == 0x0)
   {
     spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
     return 255;
@@ -1635,6 +1657,10 @@ int run_command(int argc, char** argv)
     }
     return 0;
   }
+  else if (cmd == "triggers")
+  {
+    return get_triggers();
+  }
   else if (cmd == "read")
   {
     if (argc != 2)
@@ -1749,6 +1775,8 @@ void print_help()
   spdlog::info("    Read DNA register of the board");
   spdlog::info("  set_periscope [periscope]");
   spdlog::info("    Set the current periscope being operated (1: P1, 2: P2)");
+  spdlog::info("  triggers");
+  spdlog::info("    Read the trigger count registers");
   spdlog::info("  help");
   spdlog::info("    Print this help");
   spdlog::info("  exit");

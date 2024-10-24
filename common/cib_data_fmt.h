@@ -41,6 +41,7 @@ namespace dunedaq {
       mapped_mem_t gpio_motor_1;
       mapped_mem_t gpio_motor_2;
       mapped_mem_t gpio_motor_3;
+      mapped_mem_t gpio_triggers;
     } cib_mem_t;
 
     typedef struct motor_t
