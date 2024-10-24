@@ -1665,7 +1665,7 @@ int run_command(int argc, char** argv)
   {
     if (argc != 2)
     {
-      spdlog::error("usage: read <reg> (pdts,laser,align,misc,mon_0,mon_1)");
+      spdlog::error("usage: read <reg> (pdts,laser,align,misc,mon_0,mon_1, triggers)");
     }
     else
     {
@@ -1705,6 +1705,10 @@ int run_command(int argc, char** argv)
       else if (scmd == "motor_3")
       {
         read_register(g_cib_mem.gpio_motor_3);
+      }
+      else if (scmd == "triggers")
+      {
+        read_register(g_cib_mem.gpio_triggers);
       }
       else
       {
