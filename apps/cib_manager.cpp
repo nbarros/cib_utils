@@ -621,12 +621,12 @@ int motor_init_limits()
   if (m_p == P1)
   {
     // FIXME: these numbers are bogus
-    m_limits.m3_min = -3001;
-    m_limits.m3_max = 28967;
-    m_limits.m2_min = -580000;
-    m_limits.m2_max = 580000;
-    m_limits.m1_min = 78661;
-    m_limits.m1_max = 136995;
+    m_limits.m3_min = 100;
+    m_limits.m3_max = 31001;
+    m_limits.m2_min = 764000;
+    m_limits.m2_max = 864000;
+    m_limits.m1_min = -650000;
+    m_limits.m1_max = -1000;
   }
   else if (m_p == P2)
   {
