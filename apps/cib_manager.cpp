@@ -615,16 +615,35 @@ int get_motor_init_position()
   return 0;
 }
 
+int get_motor_current_position()
+{
+  spdlog::info("Getting current motor positions");
+  uintptr_t maddr = g_cib_mem.gpio_motor_1.v_addr;
+  uint32_t mask = cib::util::bitmask(21,0);
+  uint32_t m1r = cib::util::reg_read(maddr + GPIO_CH_OFFSET);
+  int32_t m1pos = cib::util::cast_to_signed((m1r & mask),mask);
+  maddr = g_cib_mem.gpio_motor_2.v_addr;
+  uint32_t m2r = cib::util::reg_read(maddr + GPIO_CH_OFFSET);
+  int32_t m2pos = cib::util::cast_to_signed((m2r & mask),mask);
+  maddr = g_cib_mem.gpio_motor_3.v_addr;
+  mask = cib::util::bitmask(16,0);
+  uint32_t m3r = cib::util::reg_read(maddr + GPIO_CH_OFFSET);
+  int32_t m3pos = cib::util::cast_to_signed((m3r & mask),mask);
+
+  spdlog::info("Current Position [RNN800, RNN600, LSTAGE] = [{0},{1},{2}]",m1pos,m2pos,m3pos);
+
+  return 0;
+}
 int motor_init_limits()
 {
   // limits from https://docs.google.com/spreadsheets/d/100HDufZ39EIJtkl2HsLmL_xbE8cTSIuBd_5BsyRRMto/edit?usp=sharing
   if (m_p == P1)
   {
     // FIXME: these numbers are bogus
-    m_limits.m3_min = 100;
-    m_limits.m3_max = 31001;
-    m_limits.m2_min = 764000;
-    m_limits.m2_max = 864000;
+    m_limits.m3_min = -12134;
+    m_limits.m3_max = 19134;
+    m_limits.m2_min = -100000;
+    m_limits.m2_max = 100000;
     m_limits.m1_min = -650000;
     m_limits.m1_max = -1000;
   }
@@ -1088,6 +1107,15 @@ int run_command(int argc, char** argv)
 
       int res = set_motor_init_position(m1,m2,m3);
     }
+    if (res != 0)
+    {
+      spdlog::error("An unknown error was found");
+    }
+    return 0;
+  }
+  else if (cmd == "motor_current")
+  {
+    int res = get_motor_current_position();
     if (res != 0)
     {
       spdlog::error("An unknown error was found");
