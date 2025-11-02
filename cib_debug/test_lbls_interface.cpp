@@ -172,7 +172,12 @@ void lbls_task(int fifo_fd)
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     zmq::message_t reply;
     spdlog::trace("Waiting for reply");
-    socket.recv(reply,zmq::recv_flags::none);
+    zmq::recv_result_t recv_result = socket.recv(reply, zmq::recv_flags::none);
+    if (!recv_result)
+    {
+      spdlog::error("Failed to receive reply from LBLS server");
+      continue;
+    }
 
     std::string reply_str(static_cast<char*>(reply.data()), reply.size());
     spdlog::debug("Received a response with {0} bytes",reply.size());

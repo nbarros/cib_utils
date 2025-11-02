@@ -60,6 +60,16 @@ namespace dunedaq {
       uint32_t dir;
     } motor_t;
 
+    // data format for the LBLS data
+    // it consists of one 64 bit timestamp followed by 
+    // 48 8-bit amplitude over threshold samples
+    typedef struct lbls_data_t
+    {
+      const static size_t num_samples = 48;
+      uint8_t samples[num_samples];
+      uint32_t timestamp;
+    } lbls_data_t;
+
     namespace limits
     {
 

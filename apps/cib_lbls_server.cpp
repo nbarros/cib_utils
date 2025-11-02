@@ -6,15 +6,15 @@
  */
 
 #include <thread>
-#include <cstdio>
-#include <cstdlib>
-#include <cerrno>
+// #include <cstdio>
+// #include <cstdlib>
+// #include <cerrno>
 #include <thread>
 #include <chrono>
 #include <csignal>
-#include <atomic>
+// #include <atomic>
 #include <fstream>
-#include <string>
+// #include <string>
 
 // spdlog headers
 #include <spdlog/spdlog.h>
@@ -28,17 +28,17 @@ extern "C"
 #include <unistd.h>           // Close() system call
 #include <fcntl.h>              // Flags for open()
 #include <sys/ioctl.h>
-#include <inttypes.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
+// #include <inttypes.h>
+// #include <sys/types.h>
+// -- these are for the UDP socket, if needed
+// #include <sys/socket.h>
+// #include <arpa/inet.h>
+// #include <netinet/in.h>
 }
 
 #include <mem_utils.h>
 #include <cib_mem.h>
 #include <cib_data_fmt.h>
-#include <mem_utils.h>
 #include <axis-fifo.h>
 
 //#define VIRTUAL_MODE 1
@@ -202,78 +202,6 @@ void lbls_task(int fifo_fd)
     return;
   }
 
-#ifdef VIRTUAL_MODE
-  // UDP socket thingy
-
-  int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-  if(sockfd <0 )
-  {
-    spdlog::error("Invalid socket");
-    return;
-  }
-
-  sockaddr_in addr;
-  addr.sin_addr.s_addr = inet_addr(g_lbls_host.c_str());
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(g_lbls_port);
-
-  len = sizeof(addr);
-
-  int result = connect(sockfd, (sockaddr*)&addr, sizeof(addr));
-  if(result < 0 )
-  {
-    spdlog::error("Socket error");
-    return;
-  }
-
-  // now start working
-  while(run.load())
-  {
-    ts++;
-    //result = send(sockfd, (char*)&ts, sizeof(ts), 0);
-    result = sendto(sockfd, (const char *)&ts, sizeof(ts),0,(const struct sockaddr *) &addr, len);
-    //        MSG_CONFIRM, (const struct sockaddr *) &addr, len);
-    if(result < 0)
-    {
-      spdlog::error("Socket error at packet {}",packets_tx);
-      return;
-    }
-    else
-    {
-      spdlog::trace("Got result {0}",result);
-    }
-    packets_tx++;
-
-    /** Alternative code. Not tested!!!
-     *
-       socklen_t len;
-
-      sendto(sockfd, (const char *)hello, strlen(hello),
-        MSG_CONFIRM, (const struct sockaddr *) &addr,
-            sizeof(addr));
-     *
-     */
-
-
-    /* To receive a reply
-     len = sizeof(addr);  //len is value/result
-
-    n = recvfrom(sockfd, (char *)buffer, MAXLINE,
-                   MSG_WAITALL, (struct sockaddr *) &servaddr,
-                   &len);
-       buffer[n] = '\0';
-       std::cout<<"Server :"<<buffer<<std::endl;
-    rx_bytes += n;
-     */
-  }
-  spdlog::info("Terminating.Closing socket.");
-  spdlog::info("Network statistics: packets_tx {0} bytes_tx {1} packets_rx {2} bytes_rx {3}",packets_tx,sizeof(ts)*packets_tx,packets_rx,rx_bytes);
-
-  close(sockfd);
-
-
-
-#else
   spdlog::info("Setting up the socket");
   zmq::context_t context;
   zmq::socket_t socket(context, ZMQ_REQ);
@@ -319,10 +247,18 @@ void lbls_task(int fifo_fd)
 
       std::string reply_str(static_cast<char*>(reply.data()), reply.size());
       spdlog::debug("Received a response with {0} bytes", reply.size());
+      cib::lbls_data_t *lbls_data = reinterpret_cast<cib::lbls_data_t *>(reply.data());
+      spdlog::debug("Received LBLS data: TS {0} Samples {1}", lbls_data->timestamp, lbls_data->samples[0]);
+
 
       // dump the contents into the log file
       out_file.write(reply_str.data(), reply.size());
       out_file.flush();
+
+      // FIXME: Ship these contents to the SC server via socket
+      // zmq::message_t msg(sizeof(cib::lbls_data_t));
+      // std::memcpy(msg.data(), lbls_data, sizeof(cib::lbls_data_t));
+      // socket.send(msg, zmq::send_flags::none);
 
     }
     else
@@ -333,107 +269,14 @@ void lbls_task(int fifo_fd)
     }
   }
 
-    //    zmq::message_t msg(sizeof(uint64_t));
-    //    std::memcpy((void*)msg.data(), &buf, sizeof(uint64_t));
-    //    socket.send(msg,zmq::send_flags::none);
-    //    // sleep for a few ms to give time to receive a reply
-    //    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    //zmq::message_t reply;
-    //socket.recv(reply,zmq::recv_flags::none);
-
-    // grab something from the FIFO
-    //    rx_bytes = read(fifo_fd,buf,256);
-    //    if (rx_bytes > 0)
-    //    {
-    //      // we have good data, send it
-    //      spdlog::trace("Received {0} bytes",rx_bytes);
-    //      ts = *reinterpret_cast<uint64_t*>(&buf);;
-  //   ts += 1;
-  //   packets_rx++;
-  //   zmq::message_t msg(sizeof(uint64_t));
-  //   //std::memcpy((void*)msg.data(), &buf, sizeof(uint64_t));
-  //   std::memcpy((void*)msg.data(),(const char*)&ts,sizeof(uint64_t));
-  //   spdlog::trace("Sending {0}",ts);
-  //   socket.send(msg,zmq::send_flags::none);
-
-  //   // sleep for a few ms to give time to receive a reply
-  //   std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  //   zmq::message_t reply;
-  //   spdlog::trace("Waiting for reply");
-  //   socket.recv(reply,zmq::recv_flags::none);
-
-  //   std::string reply_str(static_cast<char*>(reply.data()), reply.size());
-  //   spdlog::debug("Received a response with {0} bytes",reply.size());
-  //   // }
-  //   // no data is available
-  // }
   spdlog::info("Left the loop. Thread will terminate");
   out_file.close();
   spdlog::info("LBLS statistics: packets_rx {0} bytes_rx {1}", packets_rx, bytes_rx);
   // terminate the socket and the context
   socket.close();
   context.close();
-#endif
 
 }
-
-// int configure(uintptr_t &addr)
-// {
-//   // configure the CIB with sensible data
-//   spdlog::info("Configuring the CIB in full blast mode");
-//
-//   // set up the settings before enabling the modules
-//   // motors initial position
-//   int reg = 1;
-//   const uint32_t reg_size = 0x4; // 4 bytes per register
-//   // set initial position to 0
-//   spdlog::debug("Setting motor initial position to 0");
-//   //  cib::util::reg_write_mask(addr+(reg_size*1),0,((1<<21)-1));
-//   //  cib::util::reg_write_mask(addr+(reg_size*2),0,((1<<21)-1));
-//   //  cib::util::reg_write_mask(addr+(reg_size*3),0,((1<<21)-1));
-//   cib::util::reg_write(addr+(reg_size*1),0);
-//   cib::util::reg_write(addr+(reg_size*2),0);
-//   cib::util::reg_write(addr+(reg_size*3),0);
-//
-//   spdlog::debug("Configuring the laser for standard settings");
-//   // set fire pulse width to 10 us = 625 clock cycles (62.5 MHz)
-//   cib::util::reg_write_mask(addr+(reg_size*10),625,((1<<12)-1));
-//   // set pulse period 100 ms = 6250000 clock cycles (62.5 MHz)
-//   cib::util::reg_write_mask(addr+(reg_size*12),6250000,((1<<24)-1));
-//   // set QS pulse width to 10 us = 625 clock cycles (62.5 MHz)
-//   cib::util::reg_write_mask_offset(addr+(reg_size*10),625,((1<<12)-1) << 12,12);
-//   // set QS delay width to 160 us = 10000 clock cycles (62.5 MHz)
-//   //cib::util::reg_write_mask(addr+(reg_size*11),10000,((1<<15)-1));
-//   cib::util::reg_write(addr+(reg_size*11),10000);
-//
-//   spdlog::debug("Enabling the LBLS trigger width to 1");
-//   // set the lbls trigger to width 1
-//   cib::util::reg_write_mask(addr+(reg_size*14),2,((1<<8)-1));
-//
-//   spdlog::debug("Setting the pulser to 10 Hz");
-//   // set the calib pulser to 10 Hz
-//   // set the same properties as the fire signal
-//   // set pulse period 100 ms = 6250000 clock cycles (62.5 MHz)
-//   cib::util::reg_write_mask(addr+(reg_size*16),6250000,((1<<24)-1));
-//   // set fire pulse width to 10 us = 625 clock cycles (62.5 MHz)
-//   //cib::util::reg_write_mask(addr+(reg_size*17),625,((1<<16)-1));
-//   cib::util::reg_write(addr+(reg_size*17),625);
-//
-//   spdlog::info("Starting to enable stuff");
-//
-//   spdlog::debug("Enabling the laser fire");
-//   cib::util::reg_write_mask_offset(addr+(reg_size*0),1,(1<<31),31);
-//
-//   spdlog::debug("Enabling the laser qswitch");
-//   cib::util::reg_write_mask_offset(addr+(reg_size*10),1,(1<<31),31);
-//
-//   spdlog::debug("Enabling the calib laser");
-//   // bit 26
-//   cib::util::reg_write_mask_offset(addr+(reg_size*0),1,(1<<26),26);
-//
-//   // do not start the LBLS right away
-//   return 0;
-// }
 
 void terminate_lbls_task(std::thread &worker)
 {
