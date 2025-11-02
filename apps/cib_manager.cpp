@@ -31,7 +31,7 @@ extern "C"
 
 //extern cib::limits::motor_limits_t m_limits;
 cib::limits::motor_limits_t m_limits;
-enum periscope{None=0,P1=1, P2=2};
+enum periscope{None=0,P1=1, P2=2, P3=3};
 periscope m_p;
 volatile std::atomic<bool> run;
 
@@ -120,6 +120,7 @@ void read_register(mapped_mem_t &reg)
 
 int select_periscope(int p)
 {
+  spdlog::info("Selecting periscope {0}",p);
   if (p == 1)
   {
     m_p = P1;
@@ -128,9 +129,13 @@ int select_periscope(int p)
   {
     m_p = P2;
   }
+  else if (p == 3)
+  {
+    m_p = P3;
+  }
   else
   {
-    spdlog::error("Invalid periscope option. Valid options are 1, 2");
+    spdlog::error("Invalid periscope option. Valid options are 1, 2, 3");
     return 1;
   }
   return motor_init_limits();
@@ -656,6 +661,15 @@ int motor_init_limits()
     m_limits.m2_max = 700000;
     m_limits.m1_min = 78661;
     m_limits.m1_max = 136995;
+  }
+  else if (m_p == P3)
+  {
+    m_limits.m3_min = -12134;
+    m_limits.m3_max = 19134;
+    m_limits.m2_min = -100000;
+    m_limits.m2_max = 100000;
+    m_limits.m1_min = 0;
+    m_limits.m1_max = 0;
   }
   else
   {
@@ -1788,6 +1802,8 @@ void print_help()
   spdlog::info("    Enable/disable alignment laser");
   spdlog::info("  motor_init [pi_rnn800<dir> pi_rnn600<dir> pi_lstage<dir>] (<dir> is 'u' (increasing step) or 'd' (decreasing step)");
   spdlog::info("    Config the initial position of the motor (in the FPGA)");
+  spdlog::info("  motor_current");
+  spdlog::info("    Get the current position of the motors");
   spdlog::info("  laser_config [laser_config fire_state fire_width [fire_period] qs_state qs_width qs_delay]");
   spdlog::info("    Configure the laser system in a single command. WARNING: Careful setting the fire_period");
   spdlog::info("  fire_enable [state]");
@@ -1828,10 +1844,15 @@ int main(int argc, char** argv)
   m_p = None;
   //motor_init_limits();
 
+  // Allow overriding remote endpoints (stored for future use)
+  static std::string g_lbls_host = "10.73.137.151"; // default used by cib_lbls_server
+  static std::string g_sc_uri   = "opc.tcp://localhost:4841"; // default OPC UA URI
+
   int c;
   opterr = 0;
   int report_level = SPDLOG_LEVEL_INFO;
-  while ((c = getopt (argc, argv, "v")) != -1)
+  // -v increases verbosity; -L <host> overrides LBLS host; -C <opcua_uri> overrides Slow Control server
+  while ((c = getopt (argc, argv, "vL:C:h")) != -1)
   {
     switch (c)
       {
@@ -1841,8 +1862,17 @@ int main(int argc, char** argv)
           report_level--;
         }
         break;
+      case 'L':
+        if (optarg) { g_lbls_host = optarg; }
+        break;
+      case 'C':
+        if (optarg) { g_sc_uri = optarg; }
+        break;
+      case 'h':
+        spdlog::warn("Usage: cib_manager [-v] [-L <lbls_host>] [-C <opcua_uri>]  (repeated -v increases verbosity)");
+        return 0;
       default: /* ? */
-        spdlog::warn("Usage: cib_manager [-v]  (repeated flags further increase verbosity)");
+        spdlog::warn("Usage: cib_manager [-v] [-L <lbls_host>] [-C <opcua_uri>]  (repeated -v increases verbosity)");
         return 1;
       }
   }
@@ -1854,6 +1884,8 @@ int main(int argc, char** argv)
   spdlog::info("Log level: {0} : {1}",static_cast<int>(spdlog::get_level()),spdlog::level::to_string_view(spdlog::get_level()).data());
   spdlog::trace("Just testing a trace");
   spdlog::debug("Just testing a debug");
+  spdlog::info("LBLS host override: {}", g_lbls_host);
+  spdlog::info("Slow Control (OPC UA) URI: {}", g_sc_uri);
 
   int ret = map_memory();
 

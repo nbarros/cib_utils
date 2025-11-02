@@ -44,6 +44,15 @@ namespace dunedaq {
       mapped_mem_t gpio_triggers;
     } cib_mem_t;
 
+    // the idea of this structure is to have a convenient way to control the lbls module
+    // the unused bits are marked as padding
+    typedef struct lbls_ctl_t
+    {
+      uint32_t width : 8;
+      uint32_t padding : 23;
+      uint32_t enable : 1;
+    } lbls_ctl_t;
+
     typedef struct motor_t
     {
       uint16_t index;
