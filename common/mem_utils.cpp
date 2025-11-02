@@ -26,7 +26,6 @@ namespace cib
 {
   namespace util
   {
-
     uintptr_t map_phys_mem(int &fd, uintptr_t base_addr,uintptr_t high_addr)
     {
       void * mapped_addr = nullptr;
@@ -36,7 +35,7 @@ namespace cib
         fd = open("/dev/mem",O_RDWR | O_SYNC);
         if (fd == -1)
         {
-          printf("Failed to open /dev/mem");
+          spdlog::critical("Failed to open /dev/mem");
           fd = 0;
           return 0;
         }
@@ -49,7 +48,7 @@ namespace cib
 
       mapped_addr = mmap(0, getpagesize(), PROT_READ | PROT_WRITE, MAP_SHARED, fd, page_addr);
       if ( (intptr_t)mapped_addr == -1) {
-        printf("Failed to map register [0x%" PRIx64 " 0x%" PRIx64 "] into virtual address.",base_addr,high_addr);
+        spdlog::critical("Failed to map register [0x%" PRIx64 " 0x%" PRIx64 "] into virtual address.",base_addr,high_addr);
         mapped_addr = 0;
       }
       return reinterpret_cast<uintptr_t>(mapped_addr);
