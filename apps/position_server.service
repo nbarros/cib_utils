@@ -1,0 +1,35 @@
+[Unit]
+Description=CIB Position Server - ZMQ Motor Position Control Service
+After=network.target
+Documentation=man:position_server(1)
+
+[Service]
+Type=simple
+User=root
+Group=root
+# Adjust the path to where your binary is installed
+ExecStart=/usr/local/bin/position_server --syslog --bind tcp://*:5555
+Restart=on-failure
+RestartSec=5s
+
+# Security settings
+# Note: Memory mapping requires certain capabilities
+# Adjust these based on your security requirements
+CapabilityBoundingSet=CAP_SYS_RAWIO CAP_DAC_OVERRIDE
+AmbientCapabilities=CAP_SYS_RAWIO CAP_DAC_OVERRIDE
+
+# Resource limits
+LimitNOFILE=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=position_server
+
+# Process properties
+Nice=-5
+IOSchedulingClass=realtime
+IOSchedulingPriority=0
+
+[Install]
+WantedBy=multi-user.target

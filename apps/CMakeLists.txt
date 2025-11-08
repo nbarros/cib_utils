@@ -67,3 +67,12 @@ target_include_directories(cib_lbls_server PRIVATE ${PROJECT_SOURCE_DIR}/common)
 target_include_directories(cib_manager PUBLIC ${ZeroMQ_INCLUDE_DIR})
 target_link_libraries(cib_lbls_server cib_daq spdlog  ${Boost_LIBRARIES} pthread common zmq)
 
+add_executable(position_server position_server.cpp)
+target_compile_features(position_server PUBLIC cxx_std_11)
+target_compile_definitions(position_server PUBLIC SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG)
+set_target_properties(position_server PROPERTIES CXX_STANDARD_REQUIRED ON)
+set_target_properties(position_server PROPERTIES CXX_EXTENSIONS OFF)
+target_include_directories(position_server PRIVATE ${PROJECT_SOURCE_DIR}/common)
+target_include_directories(position_server PUBLIC ${ZeroMQ_INCLUDE_DIR})
+target_link_libraries(position_server common spdlog zmq pthread)
+
