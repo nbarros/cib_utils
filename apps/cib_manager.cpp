@@ -927,8 +927,8 @@ int set_laser_settings(uintptr_t &addr,
   set_laser_fire(addr, fire_width, fire_period);
 
   spdlog::debug("Configuring qswitch");
-  set_laser_fire(addr, qs_width, qs_delay);
-
+  // set_laser_fire(addr, qs_width, qs_delay);
+  set_laser_qswitch(addr, qs_width, qs_delay);
   spdlog::debug("Setting the states");
 
   // first fire
@@ -1105,7 +1105,7 @@ int run_command(int argc, char** argv)
       res = motor_extract_info(argv[3], p3,d3);
       if (res != 0)
       {
-        spdlog::error("Failed to get RNN600 init settings");
+        spdlog::error("Failed to get LSTAGE init settings");
         spdlog::warn("usage: motor_init [pi1<dir> pi2<dir> pi3<dir>] (<dir> is 'u' (increasing step) or 'd' (decreasing step)");
         return 0;
       }
