@@ -202,7 +202,7 @@ namespace cib
       while (!m_stop_running.load())
       {
         nlohmann::json resp;
-
+        
         // the tricky part of this kind of operation is that we do not know
         // exactly what /how many bytes are we receiving
         boost::array<char, 1024> req_buff{" "} ;
@@ -234,9 +234,10 @@ namespace cib
             std::string cmd = request.at("command").get<std::string>();
             if (cmd == std::string("config"))
             {
+              nlohmann::json conf = request.at("config");
               SPDLOG_DEBUG("Received a config request\n");
               // call the configurator
-              ret = config(request.at("config"),resp);
+              ret = config(conf,resp);
               if (ret)
               {
                 had_error = true;
