@@ -234,7 +234,7 @@ namespace cib
             std::string cmd = request.at("command").get<std::string>();
             if (cmd == std::string("config"))
             {
-              nlohmann::json conf = request.at("config");
+              nlohmann::json conf = request.at("config").get<nlohmann::json>();
               SPDLOG_DEBUG("Received a config request\n");
               // call the configurator
               ret = config(conf,resp);
