@@ -33,9 +33,17 @@ namespace cib
                                 ,m_control_thread(nullptr)
                                 {
 
-    //m_reader = new ReaderBase(simulation);
-    m_reader = new ReaderAXIFIFO();
-                                }
+    if (m_simulation)
+    {
+      SPDLOG_INFO("CIB DAQ Handler created in SIMULATION mode.");
+      m_reader = new ReaderBase(simulation);
+    }
+    else
+    {
+      SPDLOG_INFO("CIB DAQ Handler created in REAL mode.");
+      m_reader = new ReaderAXIFIFO();
+    }
+  }
 
   Handler::~Handler ()
   {

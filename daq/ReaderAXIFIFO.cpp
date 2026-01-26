@@ -28,8 +28,6 @@ namespace cib
   ReaderAXIFIFO::ReaderAXIFIFO ()
       : m_debug(true)
         ,m_is_ready(false)
-        ,m_receiver_host("")
-        ,m_receiver_port(0)
         ,m_axi_dev("/dev/axis_fifo_0x00000000a0000000")
         ,m_dev_fd(0)
         ,m_ctl_reg_addr(0)

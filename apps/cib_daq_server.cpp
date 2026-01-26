@@ -48,7 +48,7 @@ void signal_handler(int signal)
 
 int main(int argc, char* argv[])
 {
-  // FIXME: Add a simulated mode
+  bool simulation_mode = false;
 
   // register the signal handlers
   std::signal(SIGINT, signal_handler);
@@ -66,18 +66,21 @@ int main(int argc, char* argv[])
   int c;
   opterr = 0;
   int report_level = SPDLOG_LEVEL_INFO;
-  while ((c = getopt (argc, argv, "v")) != -1)
+  while ((c = getopt (argc, argv, "vsh")) != -1)
   {
     switch (c)
       {
       case 'h':
-        spdlog::warn("Usage: cib_daq_server [-v]  (repeated flags further increase verbosity)");
+        spdlog::warn("Usage: cib_daq_server [-s] [-v]  (repeated flags further increase verbosity)");
         break;
       case 'v':
         if (report_level > 0)
         {
           report_level--;
         }
+        break;
+      case 's':
+        simulation_mode = true;
         break;
       default: /* ? */
         spdlog::warn("Usage: cib_daq_server [-v]  (repeated flags further increase verbosity)");
@@ -104,7 +107,7 @@ int main(int argc, char* argv[])
   g_keep_running.store(true);
 
   spdlog::info("Initiating listener service");
-  cib::Handler handler_(false);
+  cib::Handler handler_(simulation_mode);
   handler_.init_listener();
 
   while(g_keep_running.load())

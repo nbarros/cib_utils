@@ -90,7 +90,7 @@ namespace cib
     unsigned int m_tot_bytes_sent;
 
 
-
+    void fake_data_generator();
 
     std::atomic<bool> m_error_state;
     boost::lockfree::spsc_queue<daq::iols_feedback_msg_t, boost::lockfree::capacity<1024> > m_message_queue;
@@ -99,18 +99,22 @@ namespace cib
     std::unique_ptr<std::thread> m_readout_thread;
 
 
+
     //
     // -- eth stuff
     //
+    std::string   m_receiver_host;
+    uint16_t      m_receiver_port;
+    bool          m_receiver_init;
 
     boost::asio::ip::tcp::endpoint  m_receiver_endpoint;
     boost::asio::io_service         m_receiver_ios;
     boost::asio::ip::tcp::socket    m_receiver_socket;
-    uint16_t                        m_receiver_port;
-    std::string                     m_receiver_host;
     std::chrono::microseconds       m_receiver_timeout;
-    bool m_receiver_init;
 
+    // -- eth packet stuff
+    daq::iols_tcp_packet_t m_eth_packet;
+    std::atomic<bool> m_take_data;
   };
 
 } /* namespace cib */

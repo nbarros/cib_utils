@@ -51,9 +51,6 @@ private:
     //void send_data(size_t n_bytes);
     bool m_debug;
     bool m_is_ready;
-    std::string m_receiver_host;
-    unsigned int m_receiver_port;
-    std::atomic<bool> m_take_data;
 
     // AXI FIFO stuff
     std::string m_axi_dev;
@@ -69,7 +66,6 @@ private:
     uint32_t m_tot_packets_sent;
     uint32_t m_tot_bytes_sent; // note that this will include the header
 
-    daq::iols_tcp_packet_t m_eth_packet;
   };
 
 } /* namespace cib */

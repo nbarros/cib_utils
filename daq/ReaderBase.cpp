@@ -8,6 +8,7 @@
 #include <ReaderBase.h>
 #include <string>
 #include <spdlog/spdlog.h>
+#include <cib_data_utils.h>
 
 extern "C"
 {
@@ -22,18 +23,19 @@ namespace cib
 
   ReaderBase::ReaderBase (const bool simulation)
                           :m_simulation(simulation)
-                           , m_ready(false)
-                           ,m_num_transfers(0)
-                           ,m_sent_bytes(0)
-                           ,m_sent_packets(0)
-                           ,m_error_state(false)
-                           ,m_readout_thread(nullptr)
-                           ,m_receiver_port(0)
-                           ,m_receiver_host("")
-                           ,m_receiver_timeout(5000) // 5 ms
-                           ,m_receiver_init(false)
-                           , m_receiver_ios()
-                           ,m_receiver_socket(m_receiver_ios)
+                            ,m_ready(false)
+                            ,m_num_transfers(0)
+                            ,m_sent_bytes(0)
+                            ,m_sent_packets(0)
+                            ,m_error_state(false)
+                            ,m_readout_thread(nullptr)
+                            ,m_receiver_port(0)
+                            ,m_receiver_host("")
+                            ,m_receiver_init(false)
+                            ,m_receiver_timeout(5000) // 5 ms
+                            ,m_receiver_ios()
+                            ,m_receiver_socket(m_receiver_ios)
+                            ,m_take_data(false)
                            {
 
     if (!m_simulation)
@@ -224,6 +226,64 @@ namespace cib
     return 0;
   }
 
+
+  void ReaderBase::fake_data_generator()
+  {
+    SPDLOG_INFO("Starting fake data generator");
+    uint32_t run_packets_tx = 0;
+    uint8_t seq_num = 0;
+    uint32_t run_bytes_tx = 0;
+
+    m_eth_packet.header.set_version(1);
+    m_eth_packet.header.packet_size = 16; // payload/word size in bytes
+    // daq::iols_trigger_t tword;
+    int32_t i = -1000,j = 0,k = 100000000;
+    int rc = 0;
+
+    while (m_take_data.load())
+    {
+      // generate fake data
+      m_eth_packet.word.timestamp = static_cast<uint64_t>(
+            std::chrono::duration_cast<std::chrono::microseconds>(
+              std::chrono::system_clock::now().time_since_epoch()
+            ).count()
+          );
+      
+
+      m_eth_packet.word.pos_m1 = 0;
+      data::set_pos_m2(m_eth_packet.word, i);
+      data::set_pos_m3(m_eth_packet.word, j);
+
+      // m_eth_packet.word.timestamp = k;
+
+      // update sequence id and send only the 20-byte packet (avoid struct padding)
+      m_eth_packet.header.sequence_id = seq_num;
+      rc = send_data(reinterpret_cast<uint8_t *>(&m_eth_packet), 20);
+      if (rc != 0)
+      {
+        // failed transmission. Stop acquisition
+        SPDLOG_ERROR("Failed to send data. Stopping acquisition");
+        m_take_data.store(false);
+      }
+      else
+      {
+        i++;
+        j++;
+        k++;
+        seq_num++; // let the variable rollover when we reach the end
+        run_packets_tx++;
+        run_bytes_tx += 20;
+        m_tot_packets_sent++;
+        m_tot_bytes_sent += 20;
+      }
+      // sleep a bit to simulate data rate
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    SPDLOG_INFO("Run stopped. Sent {0} bytes ({1} packets)", run_bytes_tx, run_packets_tx);
+
+    SPDLOG_INFO("Exiting fake data generator");
+  }
+
   int ReaderBase::start_run(const uint32_t run_number)
   {
     SPDLOG_INFO("Starting run.");
@@ -231,10 +291,31 @@ namespace cib
     if (m_state != kReady)
     {
       SPDLOG_ERROR("Not ready to start a run");
+      // terminate the transmitter if it failed
+      term_transmitter();
       return 1;
+    }
+
+    if (m_simulation)
+    {
+      SPDLOG_TRACE("Preparing to start taking data");
+      m_take_data.store(true);
+
+      SPDLOG_INFO("Simulation mode - starting fake data generator");
+      m_readout_thread = std::unique_ptr<std::thread>(new std::thread(&ReaderBase::fake_data_generator, this));
+      
+      if (m_readout_thread.get() == nullptr)
+      {
+        SPDLOG_ERROR("Failed to launch readout thread.");
+        add_feedback("ERROR", "Failed to launch readout thread");
+        // at this point terminate the transmitter
+        term_transmitter();
+        return 1;
+      }
     }
     m_run_enable.store(true);
     m_state = kRunning;
+
     return 0;
   }
 
@@ -245,6 +326,20 @@ namespace cib
     {
       SPDLOG_ERROR("Trying to stop but run not running");
       return 1;
+    }
+
+    if (m_simulation)
+    {
+      SPDLOG_TRACE("Stopping fake data generator");
+      m_take_data.store(false);
+      // wait for a sec to allow the data taking to stop
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+      if (m_readout_thread && m_readout_thread->joinable())
+      {
+        m_readout_thread->join();
+      }
+      m_readout_thread = nullptr;
     }
     m_run_enable.store(false);
     m_state = kReady;
