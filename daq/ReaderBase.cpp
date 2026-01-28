@@ -300,7 +300,7 @@ namespace cib
         m_tot_bytes_sent += 20;
       }
       // sleep a bit to simulate data rate
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     SPDLOG_INFO("Run stopped. Sent {0} bytes ({1} packets)", run_bytes_tx, run_packets_tx);
 
