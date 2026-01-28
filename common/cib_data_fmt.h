@@ -42,6 +42,7 @@ namespace dunedaq {
       mapped_mem_t gpio_motor_2;
       mapped_mem_t gpio_motor_3;
       mapped_mem_t gpio_triggers;
+      mapped_mem_t gpio_tstamp;
     } cib_mem_t;
 
     // the idea of this structure is to have a convenient way to control the lbls module
@@ -70,6 +71,15 @@ namespace dunedaq {
       uint32_t timestamp;
     } lbls_data_t;
 
+    typedef struct pdts_tstamp_t
+    {
+      uint32_t low;
+      uint32_t high;
+      uint64_t get_timestamp()
+      {
+        return (static_cast<uint64_t>(high) << 32) | static_cast<uint64_t>(low);
+      }
+    } pdts_tstamp_t;
     namespace limits
     {
 

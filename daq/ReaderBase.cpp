@@ -9,6 +9,8 @@
 #include <string>
 #include <spdlog/spdlog.h>
 #include <cib_data_utils.h>
+#include <cib_mem.h>
+#include <mem_utils.h>
 
 extern "C"
 {
@@ -239,16 +241,37 @@ namespace cib
     // daq::iols_trigger_t tword;
     int32_t i = -1000,j = 0,k = 100000000;
     int rc = 0;
+    pdts_tstamp_t timestamp;
+    // -- map the timestamp register
+    int mem_dev_fd = 0;
+    uintptr_t tstamp_addr = cib::util::map_phys_mem(mem_dev_fd,GPIO_TSTAMP_MEM_LOW,GPIO_TSTAMP_MEM_HIGH);
+    if (tstamp_addr)
+    {
+      SPDLOG_DEBUG("Mapped address : 0x{0:X}", tstamp_addr);
+    }
+    else
+    {
+      SPDLOG_ERROR("Failed to map memory. This will fail somewhere.");
+    }
 
     while (m_take_data.load())
     {
       // generate fake data
+      if (tstamp_addr)
+      {
+        // read the timestamp from the mapped register
+        timestamp.low = cib::util::reg_read(tstamp_addr + 0x0);
+        timestamp.high = cib::util::reg_read(tstamp_addr + GPIO_CH_OFFSET);
+        m_eth_packet.word.timestamp = timestamp.get_timestamp();
+      }
+      else
+      {
       m_eth_packet.word.timestamp = static_cast<uint64_t>(
             std::chrono::duration_cast<std::chrono::microseconds>(
               std::chrono::system_clock::now().time_since_epoch()
             ).count()
           );
-      
+      }      
 
       m_eth_packet.word.pos_m1 = 0;
       data::set_pos_m2(m_eth_packet.word, i);
@@ -281,6 +304,12 @@ namespace cib
     }
     SPDLOG_INFO("Run stopped. Sent {0} bytes ({1} packets)", run_bytes_tx, run_packets_tx);
 
+    if (tstamp_addr)
+    {
+      SPDLOG_DEBUG("Unmapping the MM register.");
+      cib::util::unmap_mem(tstamp_addr, (GPIO_TSTAMP_MEM_HIGH-GPIO_TSTAMP_MEM_LOW));
+      close(mem_dev_fd);
+    }
     SPDLOG_INFO("Exiting fake data generator");
   }
 

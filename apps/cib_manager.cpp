@@ -96,6 +96,8 @@ int get_dna(uintptr_t &addr1,uintptr_t &addr2);
 int select_periscope(int p);
 int get_triggers();
 
+int get_timestamp();
+
 int run_command(int argc, char** argv);
 void print_help();
 void read_register(mapped_mem_t &reg);
@@ -165,6 +167,19 @@ int get_triggers()
   maddr = g_cib_mem.gpio_triggers.v_addr + (GPIO_CH_OFFSET * 1);
   uint32_t ptr_triggers = cib::util::reg_read(maddr);
   spdlog::info("PTR triggers : {0}", ptr_triggers);
+  return 0;
+}
+
+int get_timestamp()
+{
+  uintptr_t maddr = g_cib_mem.gpio_tstamp.v_addr + (GPIO_CH_OFFSET * 0);
+  uint32_t cib_tstamp_low = cib::util::reg_read(maddr);
+  maddr = g_cib_mem.gpio_tstamp.v_addr + (GPIO_CH_OFFSET * 1);
+  uint32_t ptr_tstamp_high = cib::util::reg_read(maddr);
+  spdlog::info("CIB timestamp low : {0}", cib_tstamp_low);
+  spdlog::info("CIB timestamp high : {0}", ptr_tstamp_high);
+  uint64_t full_timestamp = (static_cast<uint64_t>(ptr_tstamp_high) << 32) | cib_tstamp_low;
+  spdlog::info("CIB full timestamp : {0}", full_timestamp);
   return 0;
 }
 
@@ -432,6 +447,16 @@ int map_memory()
     return 255;
   }
 
+  spdlog::info("Mapping TIMESTAMP");
+  g_cib_mem.gpio_tstamp.p_addr = GPIO_TSTAMP_MEM_LOW;
+  g_cib_mem.gpio_tstamp.v_addr = cib::util::map_phys_mem(g_mem_fd, GPIO_TSTAMP_MEM_LOW, GPIO_TSTAMP_MEM_HIGH);
+  spdlog::debug("\nGot virtual address [0x{:X}]", g_cib_mem.gpio_tstamp.v_addr);
+  if (g_cib_mem.gpio_tstamp.v_addr == 0x0)
+  {
+    spdlog::critical("Failed to map GPIO memory. Investigate that the address is correct.");
+    return 255;
+  }
+
   return 0;
 }
 
@@ -489,6 +514,17 @@ void clear_memory()
   {
     spdlog::error("Failed to unmap motor_3");
   }
+  ret = cib::util::unmap_mem(g_cib_mem.gpio_triggers.v_addr, PAGE_SIZE);
+  if (ret != 0)
+  {
+    spdlog::error("Failed to unmap triggers");
+  }
+  ret = cib::util::unmap_mem(g_cib_mem.gpio_tstamp.v_addr, PAGE_SIZE);
+  if (ret != 0)
+  {
+    spdlog::error("Failed to unmap timestamp");
+  }
+
   spdlog::info("Destroying the DAC connection");
   delete g_dac;
   g_dac = nullptr;
@@ -1703,6 +1739,10 @@ int run_command(int argc, char** argv)
   {
     return get_triggers();
   }
+  else if (cmd == "timestamp")
+  {
+    return get_timestamp();
+  }
   else if (cmd == "read")
   {
     if (argc != 2)
@@ -1751,6 +1791,10 @@ int run_command(int argc, char** argv)
       else if (scmd == "triggers")
       {
         read_register(g_cib_mem.gpio_triggers);
+      }
+      else if (scmd == "timestamp")
+      {
+        read_register(g_cib_mem.gpio_tstamp);
       }
       else
       {
@@ -1825,6 +1869,8 @@ void print_help()
   spdlog::info("    Set the current periscope being operated (1: P1, 2: P2)");
   spdlog::info("  triggers");
   spdlog::info("    Read the trigger count registers");
+  spdlog::info("  timestamp");
+  spdlog::info("    Read the timestamp registers");
   spdlog::info("  help");
   spdlog::info("    Print this help");
   spdlog::info("  exit");

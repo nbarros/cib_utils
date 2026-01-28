@@ -3,6 +3,10 @@ CIB Utilities. Various tools and libraries used in the CIB code base.
 
 # Changelog
 
+* 28/01/2026 : Nuno Barros <barros@lip.pt>
+				Implemented a fake data generator using real timestamps. 
+				Requires firmware v10-01 and above
+
 * 30/06/2024 : Nuno Barros <barros@lip.pt>
 
 				Implemented working version of the cib_daq_server, along with the respective service.
