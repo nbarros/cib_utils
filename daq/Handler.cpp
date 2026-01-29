@@ -175,10 +175,11 @@ namespace cib
         tmp_sock.connect(tmp_resolver.resolve(boost::asio::ip::tcp::v4(),
                                               "localhost",std::to_string(m_control_port),tmp_ec)->endpoint());
         tmp_sock.shutdown(boost::asio::ip::tcp::socket::shutdown_send, tmp_ec);
+        SPDLOG_DEBUG("Closing the tmp socket.");
         tmp_sock.close();
         tmp_resolver.cancel();
         tmp_ios.stop();
-
+        SPDLOG_DEBUG("Left the temporary connection.");
 
         // these do not cause trouble if they are called with a closed acceptor
         acceptor.cancel();
