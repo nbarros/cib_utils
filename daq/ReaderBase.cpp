@@ -254,6 +254,8 @@ namespace cib
       SPDLOG_ERROR("Failed to map memory. This will fail somewhere.");
     }
 
+    SPDLOG_DEBUG("Working with packet sizes: eth_packet={0} bytes trigger={1} bytes", sizeof(m_eth_packet), sizeof(m_eth_packet.word));
+
     while (m_take_data.load())
     {
       // generate fake data
@@ -288,7 +290,7 @@ namespace cib
                    static_cast<int32_t>(data::get_m3(m_eth_packet.word)),
                    static_cast<uint64_t>(m_eth_packet.word.timestamp)
                    );
-      rc = send_data(reinterpret_cast<uint8_t *>(&m_eth_packet), 20);
+      rc = send_data(reinterpret_cast<uint8_t *>(&m_eth_packet), sizeof(m_eth_packet));
       if (rc != 0)
       {
         // failed transmission. Stop acquisition
@@ -302,9 +304,9 @@ namespace cib
         k++;
         seq_num++; // let the variable rollover when we reach the end
         run_packets_tx++;
-        run_bytes_tx += 20;
+        run_bytes_tx += sizeof(m_eth_packet);
         m_tot_packets_sent++;
-        m_tot_bytes_sent += 20;
+        m_tot_bytes_sent += sizeof(m_eth_packet);
       }
       // sleep a bit to simulate data rate
       std::this_thread::sleep_for(std::chrono::milliseconds(100));

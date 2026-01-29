@@ -1,0 +1,5 @@
+{"command":"config","config":{"sockets":{"receiver":{"host":"localhost","port":8972}}}}
+
+{"command":"start_run","run_number":1502}
+
+{"command": "stop_run"}
