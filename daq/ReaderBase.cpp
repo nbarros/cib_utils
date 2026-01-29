@@ -284,8 +284,8 @@ namespace cib
       m_eth_packet.header.sequence_id = seq_num;
       SPDLOG_DEBUG("Sending packet: seq_id={0}, pos_m2={1}, pos_m3={2}, timestamp={3}",
                    static_cast<uint16_t>(m_eth_packet.header.sequence_id),
-                   static_cast<int32_t>(data::get_pos_m2(m_eth_packet.word)),
-                   static_cast<int32_t>(data::get_pos_m3(m_eth_packet.word)),
+                   static_cast<int32_t>(data::get_m2(m_eth_packet.word)),
+                   static_cast<int32_t>(data::get_m3(m_eth_packet.word)),
                    static_cast<uint64_t>(m_eth_packet.word.timestamp)
                    );
       rc = send_data(reinterpret_cast<uint8_t *>(&m_eth_packet), 20);
