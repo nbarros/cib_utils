@@ -125,6 +125,9 @@ namespace cib
                                             boost::asio::ip::tcp::endpoint( boost::asio::ip::tcp::v4(),
                                                                             m_control_port ) );
 
+    // Declare the future with wider scope to prevent destructor blocking
+    std::shared_future<void> accepting;
+
     // loop to keep reaccepting connections
     while (!m_stop_running.load())
     {
@@ -142,7 +145,7 @@ namespace cib
        *
        * The trick is to consume the acceptor by opening a connection that is then shut down
        */
-      std::future<void> accepting = async( std::launch::async, [&]{ acceptor.accept(m_control_socket) ; } ) ;
+      accepting = std::async( std::launch::async, [&]{ acceptor.accept(m_control_socket) ; } ).share();
       // the following loop is locked until either a connection is established
       // or run is stopped
       while (!m_stop_running.load())
@@ -229,13 +232,21 @@ namespace cib
           }
         }
         
-        // Wait for the async accept to complete/fail before exiting
-        // Otherwise the future will hang in its destructor waiting for the operation to finish
+        // Wait for the async accept to complete/fail with a timeout
+        // If it doesn't complete, we'll have to let the destructor handle it
         try
         {
           SPDLOG_DEBUG("Waiting for async accept operation to complete.");
-          accepting.wait();
-          SPDLOG_DEBUG("Async accept operation completed.");
+          auto wait_status = accepting.wait_for(std::chrono::milliseconds(100));
+          if (wait_status == std::future_status::ready)
+          {
+            SPDLOG_DEBUG("Async accept operation completed.");
+          }
+          else
+          {
+            SPDLOG_WARN("Async accept operation did not complete in time, proceeding anyway.");
+            // Don't wait indefinitely - let it clean up as best it can
+          }
         }
         catch(const std::exception &e)
         {
