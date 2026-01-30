@@ -22,7 +22,7 @@ namespace cib
                               : m_simulation(simulation)
                                 ,m_reader(nullptr)
                                 ,m_control_port(8992)
-                                ,m_control_timeout(10000) // microseconds = 10 ms
+                                ,m_control_timeout(1000000) // microseconds = 1 s
                                 ,m_control_init(false)
                                 ,m_control_error(false)
                                 ,m_control_ios()
@@ -91,7 +91,7 @@ namespace cib
       m_stop_running.store(true);
       // hold on for a short period to give the listener thread time to
       // terminate
-      std::this_thread::sleep_for(2*m_control_timeout);
+      std::this_thread::sleep_for(std::chrono::microseconds(2*m_control_timeout));
       // join won't work since the listener is waiting
       SPDLOG_DEBUG("Terminating the listener thread.");
       if (m_control_thread.get()->joinable())
@@ -172,8 +172,10 @@ namespace cib
         //        boost::asio::ip::tcp::resolver::query tmp_query("localhost", std::to_string(m_control_port),boost::asio::ip::tcp::resolver::query::v4_mapped ) ; //"np04-ctb-1", 8991
         //        boost::asio::ip::tcp::resolver::iterator tmp_iter = tmp_resolver.resolve(tmp_query) ;
         //tmp_sock.connect(tmp_iter->endpoint());
+        SPDLOG_DEBUG("Connecting the socket. Closing the tmp socket.");
         tmp_sock.connect(tmp_resolver.resolve(boost::asio::ip::tcp::v4(),
                                               "localhost",std::to_string(m_control_port),tmp_ec)->endpoint());
+        SPDLOG_DEBUG("Shutting down the connection.");
         tmp_sock.shutdown(boost::asio::ip::tcp::socket::shutdown_send, tmp_ec);
         SPDLOG_DEBUG("Closing the tmp socket.");
         tmp_sock.close();
