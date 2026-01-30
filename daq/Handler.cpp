@@ -169,38 +169,30 @@ namespace cib
         try
         {
           boost::asio::io_service tmp_ios;
-          boost::asio::ip::tcp::resolver tmp_resolver( tmp_ios );
           boost::asio::ip::tcp::socket tmp_sock(tmp_ios);
           boost::system::error_code tmp_ec;
 
-          SPDLOG_DEBUG("Resolving localhost:{}", m_control_port);
-          auto resolve_results = tmp_resolver.resolve(boost::asio::ip::tcp::v4(),
-                                                      "localhost",std::to_string(m_control_port),tmp_ec);
+          SPDLOG_DEBUG("Connecting to 127.0.0.1:{}", m_control_port);
+          // Use numeric IP to avoid DNS issues on different platforms
+          boost::asio::ip::tcp::endpoint tmp_endpoint(
+            boost::asio::ip::address::from_string("127.0.0.1"), m_control_port);
+          
+          tmp_sock.connect(tmp_endpoint, tmp_ec);
           if (tmp_ec)
           {
-            SPDLOG_WARN("Failed to resolve localhost: {}", tmp_ec.message());
+            SPDLOG_WARN("Failed to connect temporary socket: {}", tmp_ec.message());
           }
           else
           {
-            SPDLOG_DEBUG("Connecting the socket. Closing the tmp socket.");
-            tmp_sock.connect(resolve_results->endpoint(), tmp_ec);
+            SPDLOG_DEBUG("Shutting down the connection.");
+            tmp_sock.shutdown(boost::asio::ip::tcp::socket::shutdown_send, tmp_ec);
             if (tmp_ec)
             {
-              SPDLOG_WARN("Failed to connect temporary socket: {}", tmp_ec.message());
-            }
-            else
-            {
-              SPDLOG_DEBUG("Shutting down the connection.");
-              tmp_sock.shutdown(boost::asio::ip::tcp::socket::shutdown_send, tmp_ec);
-              if (tmp_ec)
-              {
-                SPDLOG_DEBUG("Shutdown error (expected if connection closed): {}", tmp_ec.message());
-              }
+              SPDLOG_DEBUG("Shutdown error (expected if connection closed): {}", tmp_ec.message());
             }
           }
           SPDLOG_DEBUG("Closing the tmp socket.");
           tmp_sock.close(tmp_ec);
-          tmp_resolver.cancel();
           tmp_ios.stop();
           SPDLOG_DEBUG("Left the temporary connection.");
         }
