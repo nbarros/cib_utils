@@ -221,7 +221,7 @@ namespace cib
         SPDLOG_INFO("Exit request found.");
         // this is the issue. It seems to fail to exit from here.
         // exit this loop
-        //break;
+        break;
       }
       else
       {
@@ -413,22 +413,28 @@ namespace cib
 
         // we had a critical issue on our part.
         // forcefully terminate the connection from our end
-        m_control_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, closing_error);
-
-        if ( closing_error )
+        if (m_control_socket.is_open())
         {
-          std::stringstream msg;
-          msg << "Error in shutdown " << closing_error.message();
-          SPDLOG_ERROR("Error shutting down connection : {}",msg.str());
+          m_control_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, closing_error);
+
+          if ( closing_error )
+          {
+            std::stringstream msg;
+            msg << "Error in shutdown " << closing_error.message();
+            SPDLOG_ERROR("Error shutting down connection : {}",msg.str());
+          }
         }
       }
       // close the socket
-      m_control_socket.close(closing_error) ;
-      if ( closing_error )
+      if (m_control_socket.is_open())
       {
-        std::stringstream msg;
-        msg << "Socket closing failed:: " << closing_error.message();
-        SPDLOG_ERROR("Error closing socket : {}",msg.str());
+        m_control_socket.close(closing_error) ;
+        if ( closing_error )
+        {
+          std::stringstream msg;
+          msg << "Socket closing failed:: " << closing_error.message();
+          SPDLOG_ERROR("Error closing socket : {}",msg.str());
+        }
       }
       // stop the IO service
       m_control_ios.stop();
