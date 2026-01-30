@@ -61,9 +61,11 @@ All modules use **CMake 3.5+** with consistent patterns:
 **Proper shutdown sequence:**
 1. DAQ sends `{"command":"stop_run"}` via control socket
 2. CIB's `Handler::stop_run()` calls `Reader::stop_run()` → `term_transmitter()`
-3. Data socket is closed, then response is sent back on control socket
-4. DAQ receives response = proof that data socket has been closed
-5. DAQ can now safely close its data receiver socket
+3. `term_transmitter()` closes data socket (CIB is the client/sender, so it closes first)
+4. CIB sends response back on control socket
+5. DAQ receives response = proof that data socket has been closed
+6. DAQ sets `m_stop_requested` to stop its receiver thread
+7. DAQ's receiver thread exits, then DAQ closes its data receiver socket
 
 **Key insight**: Response arrival on control socket IS the synchronization point — the response can only be sent after data socket closure completes.
 
