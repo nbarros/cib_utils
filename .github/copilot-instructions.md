@@ -53,6 +53,20 @@ All modules use **CMake 3.5+** with consistent patterns:
 - `ReaderBase` (simulation) vs. `ReaderAXIFIFO` (real) swapped at runtime
 - Enables testing on non-Zynq systems
 
+### 5. Socket Lifecycle & Shutdown Handshake
+**Two independent TCP connections exist:**
+- **Control socket** (port 8992): CIB server ← DAQ client (JSON config commands)
+- **Data socket**: CIB client → DAQ server (detector readout)
+
+**Proper shutdown sequence:**
+1. DAQ sends `{"command":"stop_run"}` via control socket
+2. CIB's `Handler::stop_run()` calls `Reader::stop_run()` → `term_transmitter()`
+3. Data socket is closed, then response is sent back on control socket
+4. DAQ receives response = proof that data socket has been closed
+5. DAQ can now safely close its data receiver socket
+
+**Key insight**: Response arrival on control socket IS the synchronization point — the response can only be sent after data socket closure completes.
+
 ## Integration Points
 
 ### DUNE DAQ Framework

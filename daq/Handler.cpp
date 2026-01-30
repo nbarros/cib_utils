@@ -22,7 +22,7 @@ namespace cib
                               : m_simulation(simulation)
                                 ,m_reader(nullptr)
                                 ,m_control_port(8992)
-                                ,m_control_timeout(1000000) // microseconds = 1 s
+                                ,m_control_timeout(10000) // microseconds = 10 ms
                                 ,m_control_init(false)
                                 ,m_control_error(false)
                                 ,m_control_ios()
@@ -210,17 +210,33 @@ namespace cib
           SPDLOG_WARN("Unknown exception during temporary connection cleanup");
         }
 
-        // these do not cause trouble if they are called with a closed acceptor
+        // Cancel the acceptor to unblock the async accept operation
         acceptor.cancel();
         acceptor.close();
         if (acceptor.is_open())
         {
           SPDLOG_WARN("Acceptor is still open. This should not happen");
         }
+        
+        // Wait for the async accept to complete/fail before exiting
+        // Otherwise the future will hang in its destructor waiting for the operation to finish
+        try
+        {
+          SPDLOG_DEBUG("Waiting for async accept operation to complete.");
+          accepting.wait();
+          SPDLOG_DEBUG("Async accept operation completed.");
+        }
+        catch(const std::exception &e)
+        {
+          SPDLOG_DEBUG("Async accept exception (expected): {}", e.what());
+        }
+        catch(...)
+        {
+          SPDLOG_DEBUG("Async accept unknown exception (expected)");
+        }
+        
         m_control_error.store(true);
         SPDLOG_INFO("Exit request found.");
-        // this is the issue. It seems to fail to exit from here.
-        // exit this loop
         break;
       }
       else
