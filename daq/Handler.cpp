@@ -163,25 +163,52 @@ namespace cib
         // The trick is to consume the current listener with a temporary connection
         // that will be immediately closed afterwards
         SPDLOG_DEBUG("Creating temporary connection to consume lingering listener.");
-        boost::asio::io_service tmp_ios;
-        boost::asio::ip::tcp::resolver tmp_resolver( tmp_ios );
-        boost::asio::ip::tcp::socket tmp_sock(tmp_ios);
-        boost::system::error_code tmp_ec;
+        try
+        {
+          boost::asio::io_service tmp_ios;
+          boost::asio::ip::tcp::resolver tmp_resolver( tmp_ios );
+          boost::asio::ip::tcp::socket tmp_sock(tmp_ios);
+          boost::system::error_code tmp_ec;
 
-        // deprecated code
-        //        boost::asio::ip::tcp::resolver::query tmp_query("localhost", std::to_string(m_control_port),boost::asio::ip::tcp::resolver::query::v4_mapped ) ; //"np04-ctb-1", 8991
-        //        boost::asio::ip::tcp::resolver::iterator tmp_iter = tmp_resolver.resolve(tmp_query) ;
-        //tmp_sock.connect(tmp_iter->endpoint());
-        SPDLOG_DEBUG("Connecting the socket. Closing the tmp socket.");
-        tmp_sock.connect(tmp_resolver.resolve(boost::asio::ip::tcp::v4(),
-                                              "localhost",std::to_string(m_control_port),tmp_ec)->endpoint());
-        SPDLOG_DEBUG("Shutting down the connection.");
-        tmp_sock.shutdown(boost::asio::ip::tcp::socket::shutdown_send, tmp_ec);
-        SPDLOG_DEBUG("Closing the tmp socket.");
-        tmp_sock.close();
-        tmp_resolver.cancel();
-        tmp_ios.stop();
-        SPDLOG_DEBUG("Left the temporary connection.");
+          SPDLOG_DEBUG("Resolving localhost:{}", m_control_port);
+          auto resolve_results = tmp_resolver.resolve(boost::asio::ip::tcp::v4(),
+                                                      "localhost",std::to_string(m_control_port),tmp_ec);
+          if (tmp_ec)
+          {
+            SPDLOG_WARN("Failed to resolve localhost: {}", tmp_ec.message());
+          }
+          else
+          {
+            SPDLOG_DEBUG("Connecting the socket. Closing the tmp socket.");
+            tmp_sock.connect(resolve_results->endpoint(), tmp_ec);
+            if (tmp_ec)
+            {
+              SPDLOG_WARN("Failed to connect temporary socket: {}", tmp_ec.message());
+            }
+            else
+            {
+              SPDLOG_DEBUG("Shutting down the connection.");
+              tmp_sock.shutdown(boost::asio::ip::tcp::socket::shutdown_send, tmp_ec);
+              if (tmp_ec)
+              {
+                SPDLOG_DEBUG("Shutdown error (expected if connection closed): {}", tmp_ec.message());
+              }
+            }
+          }
+          SPDLOG_DEBUG("Closing the tmp socket.");
+          tmp_sock.close(tmp_ec);
+          tmp_resolver.cancel();
+          tmp_ios.stop();
+          SPDLOG_DEBUG("Left the temporary connection.");
+        }
+        catch(const std::exception &e)
+        {
+          SPDLOG_WARN("Exception during temporary connection cleanup: {}", e.what());
+        }
+        catch(...)
+        {
+          SPDLOG_WARN("Unknown exception during temporary connection cleanup");
+        }
 
         // these do not cause trouble if they are called with a closed acceptor
         acceptor.cancel();
