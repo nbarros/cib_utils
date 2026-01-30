@@ -218,6 +218,17 @@ namespace cib
           SPDLOG_WARN("Acceptor is still open. This should not happen");
         }
         
+        // Close the control socket to force the async accept in the lambda to fail/complete
+        if (m_control_socket.is_open())
+        {
+          boost::system::error_code close_ec;
+          m_control_socket.close(close_ec);
+          if (close_ec)
+          {
+            SPDLOG_DEBUG("Error closing control socket during cleanup: {}", close_ec.message());
+          }
+        }
+        
         // Wait for the async accept to complete/fail before exiting
         // Otherwise the future will hang in its destructor waiting for the operation to finish
         try
