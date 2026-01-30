@@ -480,6 +480,11 @@ namespace cib
       // all ready to initiate a new listening socket
       SPDLOG_DEBUG("Reached end of this connection");
     }
+    
+    // Explicitly reset the future to prevent blocking on destruction
+    // This abandons any remaining async operation
+    accepting = std::shared_future<void>();
+    
     SPDLOG_INFO("Leaving the control listener");
   }
 
