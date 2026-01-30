@@ -72,7 +72,7 @@ namespace cib
       SPDLOG_ERROR("Listener already running. Doing nothing.");
       return;
     }
-    //FIXME: Do we need a listener thread? We should be able to live with just the data taking one
+    // Launch the control listener thread to handle JSON commands
     m_control_thread = std::unique_ptr<std::thread>(new std::thread(&Handler::listen_task,this));
     if (m_control_thread.get() == nullptr)
     {
@@ -85,7 +85,7 @@ namespace cib
 
   void Handler::stop_listener()
   {
-    // FIXME: If I call the listener to stop before the run is over. Assume  yes.
+    // Safe to call even if a run is active - will force termination
     if (m_is_running.load())
     {
       m_stop_running.store(true);
@@ -102,11 +102,7 @@ namespace cib
       }
       else
       {
-        SPDLOG_WARN("Thread is not joinable. Forcing our way out of it.");
-        // this should not happen.
-        // It will certainly lead to dirty trail of remains
-        //m_control_thread.get_deleter().default_delete();
-        //SPDLOG_TRACE("Thread is now dead.");
+        SPDLOG_WARN("Thread is not joinable. This indicates an abnormal state.");
         m_control_thread = nullptr;
       }
     }
@@ -337,11 +333,7 @@ namespace cib
             }
             if (m_control_error.load())
             {
-              nlohmann::json entry;
               add_feedback(resp,"ERROR","Failed to execute request");
-//              entry["type"] = "ERROR";
-//              entry["message"] = "Failed to execute command";
-//              resp["feedback"].push_back(entry);
             }
           }
           else
