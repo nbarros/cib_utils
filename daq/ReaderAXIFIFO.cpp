@@ -128,7 +128,7 @@ namespace cib
     }
     // -- call a reset FIFO to clear out existing stale content
     // this should have nothing, since the stop procedure also clears out the remaining contents
-    SPDLOG_TRACE("Resetting the FIFO");
+    SPDLOG_TRACE("Resetting the FIFO IP Core");
     rc = ioctl(m_dev_fd,AXIS_FIFO_RESET_IP);
     if (rc)
     {
@@ -161,7 +161,7 @@ namespace cib
     while (m_take_data.load())
     {
       //bytes_rx = read(m_dev_fd,m_buffer,160);
-      bytes_rx = read(m_dev_fd,&(m_eth_packet.word),16);
+      bytes_rx = read(m_dev_fd,&(m_eth_packet.word),sizeof(daq::iols_trigger_t));
       if (bytes_rx > 0)
       {
         // we have data
@@ -196,8 +196,8 @@ namespace cib
       else
       {
         // there is nothing. It likely timed out
-        //SPDLOG_TRACE("Returned {0}",bytes_rx);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        SPDLOG_TRACE("Returned {0}",bytes_rx);
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
       }
     }
     SPDLOG_INFO("Run stopped. Received {0} bytes ({1} packets)",run_bytes_rx,run_packets_rx);
@@ -315,6 +315,16 @@ namespace cib
 
     // terminate the transmission socket
     term_transmitter();
+    // -- reset the IP code
+    SPDLOG_TRACE("Resetting the FIFO IP Core");
+    int rc = ioctl(m_dev_fd, AXIS_FIFO_RESET_IP);
+    if (rc)
+    {
+      SPDLOG_ERROR("Failed to reset the FIFO");
+      add_feedback("WARN", "Failed to reset the DAQ FIFO");
+      return 1;
+    }
+
     add_feedback("INFO","Run stopped.");
     return 0;
   }
