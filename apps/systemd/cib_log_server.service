@@ -3,7 +3,6 @@ Description=CIB trigger logger service
 After=network.target
 Wants=network.target
 StartLimitIntervalSec=0
-RestartSec=1
 
 [Service]
 ;Type=simple
