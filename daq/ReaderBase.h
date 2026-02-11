@@ -65,16 +65,16 @@ namespace cib
     int send_data(uint8_t *data, size_t n_bytes);
     void add_feedback(const std::string severity, std::string msg);
     virtual void readout_task() {};
+    uint64_t system_timestamp();
 
-//  private:
-//    // the real worker threads
-//    virtual void clear_threads();
-//    virtual void data_collector();
+      //  private:
+      //    // the real worker threads
+      //    virtual void clear_threads();
+      //    virtual void data_collector();
 
+      protected :
 
-  protected:
-
-    State m_state;
+      State m_state;
 
     bool m_simulation;
 
