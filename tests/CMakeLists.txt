@@ -25,3 +25,8 @@ target_compile_features(test_namespace PUBLIC cxx_std_11)
 target_include_directories(test_namespace PUBLIC ${PROJECT_SOURCE_DIR}/common)
 target_include_directories(test_namespace PUBLIC ${PROJECT_BINARY_DIR})
 
+add_executable(test_cib_time EXCLUDE_FROM_ALL test_cib_time.cpp)
+target_compile_features(test_cib_time PUBLIC cxx_std_11)
+target_link_libraries(test_cib_time PUBLIC common)
+target_include_directories(test_cib_time PUBLIC ${PROJECT_SOURCE_DIR}/common)
+
