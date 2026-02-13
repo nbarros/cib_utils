@@ -136,12 +136,18 @@ namespace cib
        */
       static constexpr int64_t get_epoch_offset_seconds() { return 11644473600LL; }
 
-    private:
       /**
-       * @brief Private constructor for singleton
-       * @param timestamp_addr Physical memory address of the 64-bit timestamp register
-       */
-      explicit cib_time(uintptr_t timestamp_addr);
+        * @brief Get the current system time as a CIB timestamp
+        * @return Current time in clock periods (16 ns ticks)
+        */
+      static uint64_t system_timestamp();
+
+        private :
+        /**
+         * @brief Private constructor for singleton
+         * @param timestamp_addr Physical memory address of the 64-bit timestamp register
+         */
+        explicit cib_time(uintptr_t timestamp_addr);
 
       uintptr_t m_timestamp_addr;
       std::unique_ptr<volatile uint32_t*> m_timestamp_ptr;  // Points to base of timestamp registers

@@ -264,5 +264,20 @@ namespace cib
       return raw_timestamp;
     }
 
+    uint64_t cib_time::system_timestamp()
+    {
+      using namespace std::chrono;
+      const auto now = system_clock::now();
+      const auto ns_since_epoch = duration_cast<nanoseconds>(now.time_since_epoch()).count();
+
+      if (ns_since_epoch < 0)
+      {
+        throw std::runtime_error("System clock is before Unix epoch");
+      }
+
+      return static_cast<uint64_t>(ns_since_epoch / get_clock_period_ns());
+    }
+
+
   } // namespace util
 } // namespace cib
